@@ -78,7 +78,10 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
       - run: node scripts/consumer-smoke.mjs
-      - run: node scripts/template-smoke.mjs
+      # npm 10 (Node 22) crashes installing a set of local tarballs with peers ("reading
+      # 'edgesOut'"); people install the templates from the registry, which it handles.
+      - if: matrix.node == 24
+        run: node scripts/template-smoke.mjs
 
   images:
     runs-on: ubuntu-latest
