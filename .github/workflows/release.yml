@@ -131,7 +131,8 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          pattern: digest-${{ matrix.name }}-*
+          # Exact platforms: `digest-airlink-*` would also match airlink-browser's digests.
+          pattern: digest-${{ matrix.name }}-{amd64,arm64}
           path: digests
           merge-multiple: true
       - uses: docker/setup-buildx-action@v3
