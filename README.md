@@ -2,9 +2,10 @@
 
 # AirLink
 
-### The open-source live workspace where AI agents work alongside your team, in real time.
+### Many humans. Many agents. One full-duplex live workspace.
 
-Live docs, sheets and slides · a shared browser · a Linux desktop · full-duplex voice<br>
+The open-source multiplayer room where people and AI agents work, talk and build together in real time.<br>
+Live docs, sheets and slides · a shared browser · a Linux desktop · voice agents you can interrupt<br>
 Bring any agent: Claude Code, Codex, Gemini CLI or any LLM. Self-hosted. MIT.
 
 [![Licence: MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
