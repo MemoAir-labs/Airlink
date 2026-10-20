@@ -57,4 +57,4 @@ one per object on E2B. See [desktop.md](desktop.md).
 
 **How fast is it?**
 Keystroke fan-out p99 10 ms on one laptop, 9–48 ms with 500 sockets. The table and the commands to
-rerun it are in the [README](../README.md#measured-latency).
+rerun it are in the [README](../README.md#measured-not-claimed).

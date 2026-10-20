@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 560" width="1040" height="560">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9" fill="none" stroke="#3a4560" stroke-width="1.5"/></marker>
+    <filter id="g" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="14"/></filter>
+  </defs>
+  <rect width="1040" height="560" rx="16" fill="#0f1422"/>
+  
+  <rect x="284" y="40" width="180" height="44" rx="10" fill="#182033" stroke="#3a4560"/>
+  <text x="374" y="67" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" fill="#e6e9f2">Docs · Sheets · Slides</text>
+  
+  <rect x="476" y="40" width="132" height="44" rx="10" fill="#182033" stroke="#3a4560"/>
+  <text x="542" y="67" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" fill="#e6e9f2">Shared browser</text>
+  
+  <rect x="620" y="40" width="136" height="44" rx="10" fill="#182033" stroke="#3a4560"/>
+  <text x="688" y="67" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" fill="#e6e9f2">Linux desktop</text>
+  <line x1="374" y1="86" x2="374" y2="134" stroke="#3a4560" stroke-width="1.5" marker-start="url(#a)" marker-end="url(#a)"/><line x1="542" y1="86" x2="542" y2="134" stroke="#3a4560" stroke-width="1.5" marker-start="url(#a)" marker-end="url(#a)"/><line x1="688" y1="86" x2="688" y2="134" stroke="#3a4560" stroke-width="1.5" marker-start="url(#a)" marker-end="url(#a)"/>
+  <rect x="284" y="140" width="472" height="290" rx="14" fill="#a78bfa33" filter="url(#g)"/>
+  <rect x="284" y="140" width="472" height="290" rx="14" fill="#182033" stroke="#a78bfa"/>
+  <text x="520" y="176" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="17" font-weight="600" fill="#a78bfa">One live room · one event log</text>
+  
+  <rect x="300" y="196" width="440" height="36" rx="6" fill="#1d2740"/>
+  <text x="314" y="219" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" fill="#8b93a8">10:42:07.114</text>
+  <text x="420" y="219" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13.5" fill="#e6e9f2">Edited a cell · Budget</text>
+  <text x="728" y="219" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" fill="#8b93a8">ada</text>
+  <rect x="300" y="238" width="440" height="36" rx="6" fill="#1d2740"/>
+  <text x="314" y="261" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" fill="#8b93a8">10:42:07.156</text>
+  <text x="420" y="261" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13.5" fill="#e6e9f2">Filled totals · Budget</text>
+  <text x="728" y="261" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" fill="#a78bfa">agent · analyst</text>
+  <rect x="300" y="280" width="440" height="36" rx="6" fill="#1d2740"/>
+  <text x="314" y="303" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" fill="#8b93a8">10:42:08.902</text>
+  <text x="420" y="303" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13.5" fill="#e6e9f2">Suggested an edit · Plan</text>
+  <text x="728" y="303" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" fill="#a78bfa">agent · writer</text>
+  <rect x="300" y="322" width="440" height="36" rx="6" fill="#1d2740"/>
+  <text x="314" y="345" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" fill="#8b93a8">10:42:09.310</text>
+  <text x="420" y="345" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13.5" fill="#e6e9f2">Opened a page · Browser</text>
+  <text x="728" y="345" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" fill="#a78bfa">agent · researcher</text>
+  <rect x="300" y="364" width="440" height="36" rx="6" fill="#1d2740"/>
+  <text x="314" y="387" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" fill="#8b93a8">10:42:10.007</text>
+  <text x="420" y="387" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13.5" fill="#e6e9f2">Spoke in huddle</text>
+  <text x="728" y="387" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" fill="#8b93a8">lin</text>
+  
+  <rect x="40" y="214" width="170" height="44" rx="10" fill="#182033" stroke="#3a4560"/>
+  <text x="125" y="241" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" fill="#e6e9f2">Person A</text>
+  
+  <rect x="40" y="330" width="170" height="44" rx="10" fill="#182033" stroke="#3a4560"/>
+  <text x="125" y="357" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" fill="#e6e9f2">Person B</text>
+  <line x1="214" y1="236" x2="280" y2="236" stroke="#3a4560" stroke-width="1.5" marker-start="url(#a)" marker-end="url(#a)"/><line x1="214" y1="352" x2="280" y2="352" stroke="#3a4560" stroke-width="1.5" marker-start="url(#a)" marker-end="url(#a)"/>
+  <rect x="826" y="232" width="180" height="96" rx="14" fill="#a78bfa33" filter="url(#g)"/>
+  <rect x="826" y="232" width="180" height="96" rx="14" fill="#182033" stroke="#a78bfa"/>
+  <text x="916" y="270" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="17" font-weight="600" fill="#a78bfa">✦ Your agents</text>
+  <text x="916" y="294" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" fill="#8b93a8">Claude Code · Codex</text>
+  <text x="916" y="312" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" fill="#8b93a8">Gemini CLI · any LLM</text>
+  <line x1="760" y1="280" x2="822" y2="280" stroke="#3a4560" stroke-width="1.5" marker-start="url(#a)" marker-end="url(#a)"/>
+  <line x1="870" y1="332" x2="870" y2="376" stroke="#3a4560" stroke-width="1.5" marker-start="url(#a)" marker-end="url(#a)"/><line x1="962" y1="332" x2="962" y2="376" stroke="#3a4560" stroke-width="1.5" marker-start="url(#a)" marker-end="url(#a)"/>
+  
+  <rect x="812" y="380" width="112" height="44" rx="10" fill="#182033" stroke="#3a4560"/>
+  <text x="868" y="407" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" fill="#e6e9f2">Memory</text>
+  
+  <rect x="932" y="380" width="96" height="44" rx="10" fill="#182033" stroke="#3a4560"/>
+  <text x="980" y="407" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" fill="#e6e9f2">Guardrails</text>
+  
+  <rect x="445" y="474" width="150" height="44" rx="10" fill="#182033" stroke="#3a4560"/>
+  <text x="520" y="501" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" fill="#e6e9f2">Voice huddle</text>
+  <line x1="520" y1="434" x2="520" y2="470" stroke="#3a4560" stroke-width="1.5" marker-start="url(#a)" marker-end="url(#a)"/>
+  <text x="520" y="544" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" fill="#8b93a8">People and agents see the same state, edit the same objects, and hear each other, live.</text>
+</svg>

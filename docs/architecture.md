@@ -148,6 +148,20 @@ sequenceDiagram
 and no prose. It is used for: which agent answers a message nobody named, whether a room event
 deserves a turn, whether a memory is worth keeping, and which agent a spoken line is for.
 
+A message reaches an agent like this:
+
+```mermaid
+flowchart LR
+  MSG["Message or room event"] --> R{"Who answers?"}
+  R -- "@mention" --> A["That agent"]
+  R -- "tag" --> A
+  R -- "nobody named" --> D["Decision node<br/>picks by role"]
+  D --> A
+  A --> HN["Harness<br/>Pi · Claude Code · Codex · …"]
+  HN -- "room tools, agent token" --> LS["live-server"]
+  HN --> REPLY["Reply in the channel"]
+```
+
 AirLink's Settings choose the provider:
 
 - **Model** (default): a small model on your key (`anthropic/claude-haiku-5-5`, else
