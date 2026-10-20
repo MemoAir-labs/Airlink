@@ -1,0 +1,32 @@
+{
+  "name": "@memo-air/canvas",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": false,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MemoAir-labs/Airlink.git",
+    "directory": "packages/canvas"
+  },
+  "homepage": "https://memoair-labs.github.io/Airlink/docs/packages/canvas/",
+  "scripts": {
+    "test": "vitest --run",
+    "prepack": "node ../../scripts/prepack.mjs",
+    "postpack": "node ../../scripts/postpack.mjs"
+  },
+  "dependencies": {
+    "fractional-indexing": "3.2.0",
+    "yjs": "^13.6.33"
+  },
+  "devDependencies": {
+    "vitest": "^4.0.16"
+  }
+}

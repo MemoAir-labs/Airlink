@@ -1,0 +1,29 @@
+{
+  "name": "create-airlink",
+  "version": "0.1.0",
+  "description": "Create an AirLink app: npm create airlink@latest",
+  "license": "MIT",
+  "private": false,
+  "type": "module",
+  "bin": {
+    "create-airlink": "index.mjs"
+  },
+  "files": ["index.mjs", "templates"],
+  "engines": {
+    "node": ">=22"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MemoAir-labs/Airlink.git",
+    "directory": "packages/create-airlink"
+  },
+  "homepage": "https://memoair-labs.github.io/Airlink/docs/getting-started/",
+  "scripts": {
+    "test": "node --test",
+    "prepack": "node prepack.mjs",
+    "postpack": "node ../../scripts/postpack.mjs"
+  }
+}

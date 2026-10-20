@@ -1,0 +1,128 @@
+# Everything Airlink runs beside its own Node process. Ports sit next to Memoair's dev stack
+# (Postgres 5434, neko 3032/9232, proxy 3033) so both can run at once; LiveKit uses its standard
+# dev ports, so stop Memoair's live-media first or point LIVEKIT_URL at it.
+name: airlink
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: airlink
+      POSTGRES_PASSWORD: airlink
+      POSTGRES_DB: airlink
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - airlink-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airlink"]
+      interval: 2s
+      retries: 30
+
+  # Voice and video for the Call button; LiveKit's published dev keys (devkey / secret).
+  livekit:
+    image: livekit/livekit-server:v1.9
+    command: --dev --bind 0.0.0.0
+    ports:
+      - "127.0.0.1:7880:7880"
+      - "127.0.0.1:7881:7881"
+      - "7882:7882/udp"
+
+  # The shared browser: neko's Chromium with every page connection through Airlink's pinning
+  # proxy, and its picture over WebRTC.
+  browser:
+    build:
+      context: ../..
+      dockerfile: docker/browser.Dockerfile
+    shm_size: 2g
+    ports:
+      - "127.0.0.1:9232:9223"
+      - "127.0.0.1:3032:8080"
+      - "52010:52010/udp"
+    environment:
+      NEKO_DESKTOP_SCREEN: 1280x800@30
+      NEKO_WEBRTC_UDPMUX: "52010"
+      NEKO_WEBRTC_NAT1TO1: 127.0.0.1
+      NEKO_WEBRTC_ICELITE: "1"
+      NEKO_MEMBER_MULTIUSER_USER_PASSWORD: ${AIRLINK_NEKO_PASSWORD:-airlink}
+      NEKO_MEMBER_MULTIUSER_ADMIN_PASSWORD: ${AIRLINK_NEKO_PASSWORD:-airlink}-admin
+      NEKO_MEMBER_MULTIUSER_USER_PROFILE: '{"can_login":true,"can_connect":true,"can_watch":true,"can_host":false,"can_share_media":false,"can_access_clipboard":false}'
+      NEKO_SESSION_API_TOKEN: ${AIRLINK_NEKO_API_TOKEN:-airlink-neko}
+      NEKO_SERVER_CORS: http://localhost:3030 http://localhost:3032
+      LIVE_BROWSER_PROXY: http://host.docker.internal:3033
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # The shared desktop when no E2B_API_KEY is set: neko's XFCE desktop for the picture, and a
+  # control server on 3035 that AirLink drives with a token (loopback only: it runs input). Not
+  # 7000 on the host: macOS's AirPlay Receiver listens there.
+  desktop:
+    build:
+      context: ../..
+      dockerfile: docker/desktop.Dockerfile
+    shm_size: 2g
+    ports:
+      - "127.0.0.1:3034:8080"
+      - "52011:52011/udp"
+      - "127.0.0.1:3035:7000"
+    environment:
+      NEKO_DESKTOP_SCREEN: 1280x800@30
+      NEKO_WEBRTC_UDPMUX: "52011"
+      NEKO_WEBRTC_NAT1TO1: 127.0.0.1
+      NEKO_WEBRTC_ICELITE: "1"
+      NEKO_MEMBER_MULTIUSER_USER_PASSWORD: ${AIRLINK_DESKTOP_PASSWORD:-airlink}
+      NEKO_MEMBER_MULTIUSER_ADMIN_PASSWORD: ${AIRLINK_DESKTOP_PASSWORD:-airlink}-admin
+      NEKO_MEMBER_MULTIUSER_USER_PROFILE: '{"can_login":true,"can_connect":true,"can_watch":true,"can_host":false,"can_share_media":false,"can_access_clipboard":false}'
+      NEKO_SERVER_CORS: http://localhost:3030 http://localhost:3034
+      DESKTOP_CONTROL_TOKEN: ${AIRLINK_DESKTOP_TOKEN:-airlink-desktop}
+
+  # Agents' code runs here: the control server on 3036 takes a script and its channel's files and
+  # runs each in its own bubblewrap jail (loopback only, token-gated: it runs code). Its own network
+  # and start.sh's egress firewall give jails the internet and nothing local. bubblewrap
+  # needs user namespaces and a fresh /proc, which Docker's default seccomp, AppArmor and masked
+  # /proc paths refuse; the jail is the boundary for scripts and the container for the jail.
+  # Not 7000 on the host: macOS's AirPlay Receiver listens there.
+  runner:
+    build:
+      context: ../..
+      dockerfile: docker/runner.Dockerfile
+    ports:
+      - "127.0.0.1:3036:7000"
+    environment:
+      RUNNER_CONTROL_TOKEN: ${AIRLINK_RUNNER_TOKEN:-airlink-runner}
+    # bwrap's namespace child outlives it and is reparented to PID 1; node never reaps it, so
+    # without an init every run leaves a zombie counting against pids_limit.
+    init: true
+    cpus: 1
+    mem_limit: 1g
+    pids_limit: 512
+    cap_add: [NET_ADMIN]
+    tmpfs:
+      - /var/runner:size=512m,uid=10001,mode=0700
+    networks: [runner-net]
+    security_opt:
+      - seccomp=unconfined
+      - apparmor=unconfined
+      - systempaths=unconfined
+    restart: unless-stopped
+
+  # Laya, the open decision model (System One wire). Off by default: measured near-uniform and
+  # 2.5–3.5 s a choice on a laptop, so it is the fine-tuning path, not a router yet. Turn on with
+  # `docker compose --profile decide up -d` and set the URL in Settings.
+  decide:
+    profiles: [decide]
+    build:
+      context: ../..
+      dockerfile: docker/decide.Dockerfile
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - airlink-decide-cache:/root/.cache
+
+# The runner's alone on this one: nothing jailed code could reach should share a network with it.
+networks:
+  runner-net: {}
+
+volumes:
+  airlink-postgres:
+  airlink-decide-cache:

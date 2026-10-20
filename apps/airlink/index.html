@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AirLink</title>
+    <link rel="icon" type="image/svg+xml" href="/web/memoair.svg" />
+    <script>
+      try {
+        const theme = localStorage.getItem("airlink-theme") ?? "system";
+        if (theme === "dark" || (theme === "system" && matchMedia("(prefers-color-scheme: dark)").matches)) {
+          document.documentElement.classList.add("dark");
+        }
+      } catch {}
+    </script>
+  </head>
+  <body class="bg-background text-foreground dark:bg-background-night dark:text-foreground-night">
+    <div id="root"></div>
+    <script type="module" src="/web/main.tsx"></script>
+  </body>
+</html>

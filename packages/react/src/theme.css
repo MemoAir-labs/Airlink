@@ -1,0 +1,85 @@
+/* The tokens the live views and their kit (ui.tsx) are styled with, for a host that has no design
+   system of its own. A host that does defines the same names and skips this file. Light values sit
+   on :root and dark ones on .dark, so `dark:` classes are rarely needed. */
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+
+  --animate-voice: voice 0.9s ease-in-out infinite;
+  @keyframes voice {
+    0%,
+    100% {
+      transform: scaleY(0.35);
+    }
+    50% {
+      transform: scaleY(1);
+    }
+  }
+
+  --color-background: var(--live-background);
+  --color-muted-background: var(--live-muted-background);
+  --color-foreground: var(--live-foreground);
+  --color-muted-foreground: var(--live-muted-foreground);
+  --color-border: var(--live-border);
+
+  /* The app's sidebar: a dark column in both themes, like a team chat's, in the deep ocean of
+     Memoair's mark; the current item takes the mark's blue-to-teal, darkened for white text. */
+  --color-sidebar: var(--live-sidebar);
+  --color-sidebar-foreground: oklch(97% 0.008 220);
+  --color-sidebar-muted: oklch(80% 0.03 225);
+  --color-sidebar-active: #2b5c82;
+  --color-sidebar-active-to: #2a7f88;
+  --color-sidebar-hover: oklch(100% 0 0 / 0.08);
+  --color-sidebar-border: oklch(100% 0 0 / 0.1);
+
+  --color-highlight: var(--color-blue-500);
+  --color-highlight-50: var(--color-blue-50);
+  --color-highlight-100: var(--color-blue-100);
+  --color-highlight-200: var(--color-blue-200);
+  --color-highlight-300: var(--color-blue-300);
+  --color-highlight-400: var(--color-blue-400);
+  --color-highlight-500: var(--color-blue-500);
+  --color-highlight-600: var(--color-blue-600);
+  --color-highlight-700: var(--color-blue-700);
+  --color-highlight-800: var(--color-blue-800);
+  --color-highlight-900: var(--color-blue-900);
+
+  --color-warning: var(--color-rose-600);
+  --color-warning-400: var(--color-rose-400);
+  --color-warning-500: var(--color-rose-500);
+  --color-warning-600: var(--live-warning);
+  --color-warning-700: var(--color-rose-700);
+}
+
+:root {
+  --live-background: oklch(100% 0 0);
+  --live-muted-background: var(--color-stone-50);
+  --live-foreground: var(--color-stone-950);
+  --live-muted-foreground: var(--color-stone-600);
+  --live-border: var(--color-stone-200);
+  --live-warning: var(--color-rose-600);
+  --live-sidebar: oklch(25% 0.045 238);
+  color-scheme: light;
+}
+
+.dark {
+  --live-background: oklch(18.5% 0.004 49.25);
+  --live-muted-background: var(--color-stone-900);
+  --live-foreground: var(--color-stone-200);
+  --live-muted-foreground: var(--color-stone-400);
+  --live-border: var(--color-stone-800);
+  --live-warning: var(--color-rose-400);
+  --live-sidebar: oklch(22% 0.032 238);
+  color-scheme: dark;
+}
+
+body {
+  background: var(--live-background);
+  color: var(--live-foreground);
+  font-family: var(--font-sans);
+}

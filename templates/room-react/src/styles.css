@@ -1,0 +1,11 @@
+/* Tailwind plus the live views' tokens, light and dark. */
+@import "@memo-air/react/theme.css";
+
+/* The views' class names live in the package, so Tailwind scans it too. */
+@source "../node_modules/@memo-air/react/dist";
+
+html,
+body,
+#root {
+  height: 100%;
+}

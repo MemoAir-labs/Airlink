@@ -1,0 +1,11 @@
+/* Tailwind plus the live views' tokens, light and dark. */
+@import "@memo-air/react/theme.css";
+
+@source "./**/*.{ts,tsx}";
+@source "../../../packages/react/src/**/*.{ts,tsx}";
+
+html,
+body,
+#root {
+  height: 100%;
+}

@@ -1,0 +1,41 @@
+{
+  "name": "@memo-air/desktop",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": false,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./session": "./src/session.ts"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MemoAir-labs/Airlink.git",
+    "directory": "packages/desktop"
+  },
+  "homepage": "https://memoair-labs.github.io/Airlink/docs/packages/desktop/",
+  "scripts": {
+    "test": "vitest --run && node --test ../../docker/desktop/control.test.mjs",
+    "prepack": "node ../../scripts/prepack.mjs",
+    "postpack": "node ../../scripts/postpack.mjs"
+  },
+  "dependencies": {
+    "yjs": "^13.6.33"
+  },
+  "devDependencies": {
+    "@e2b/desktop": "^2.5.0",
+    "vitest": "^4.0.16"
+  },
+  "peerDependencies": {
+    "@e2b/desktop": "^2.5.0"
+  },
+  "peerDependenciesMeta": {
+    "@e2b/desktop": {
+      "optional": true
+    }
+  }
+}

@@ -1,0 +1,151 @@
+name: Release
+
+# Versions move in the monorepo AirLink is exported from; this workflow only publishes. A push whose
+# versions npm already has publishes nothing; pending changesets publish as `next`. npm accepts the
+# publish through trusted publishing (OIDC), configured per package on npmjs.com, so there is no
+# npm token in this repository.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      id-token: write
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      tags: ${{ steps.release.outputs.tags || steps.snapshot.outputs.tags }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          registry-url: https://registry.npmjs.org
+      # Trusted publishing (OIDC) needs npm 11.5.1 or later.
+      - run: npm install -g npm@11.11.0
+      - run: npm ci
+      - name: Publish the versions npm does not have yet
+        id: release
+        env:
+          NPM_CONFIG_PROVENANCE: "true"
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(node -p "require('./packages/protocol/package.json').version")
+          npx changeset publish --no-git-tag
+          if git ls-remote --exit-code --tags origin "refs/tags/v$version" >/dev/null; then
+            exit 0
+          fi
+          # The registry can lag a publish by a few seconds.
+          for wait in 2 4 8 16 0; do
+            npm view "@memo-air/protocol@$version" version && break
+            [ "$wait" -gt 0 ] || exit 1
+            sleep "$wait"
+          done
+          git tag "v$version"
+          git push origin "v$version"
+          node scripts/release-notes.mjs "$version" > release-notes.md
+          gh release create "v$version" --title "v$version" --notes-file release-notes.md
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tags=$version latest" >> "$GITHUB_OUTPUT"
+      - name: Publish pending changes as next
+        id: snapshot
+        if: steps.release.outputs.tags == ''
+        env:
+          NPM_CONFIG_PROVENANCE: "true"
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          if [ -z "$(find .changeset -name '*.md' ! -name README.md)" ]; then
+            exit 0
+          fi
+          npx changeset version --snapshot next
+          npx changeset publish --tag next --no-git-tag
+          echo "tags=next" >> "$GITHUB_OUTPUT"
+
+  images:
+    needs: publish
+    if: needs.publish.outputs.tags != ''
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - { name: airlink, dockerfile: docker/airlink.Dockerfile }
+          - { name: airlink-live-server, dockerfile: docker/live-server.Dockerfile }
+          - { name: airlink-browser, dockerfile: docker/browser.Dockerfile }
+          - { name: airlink-desktop, dockerfile: docker/desktop.Dockerfile }
+          - { name: airlink-runner, dockerfile: docker/runner.Dockerfile }
+        platform:
+          - { name: amd64, arch: linux/amd64, runner: ubuntu-24.04 }
+          - { name: arm64, arch: linux/arm64, runner: ubuntu-24.04-arm }
+    runs-on: ${{ matrix.platform.runner }}
+    timeout-minutes: 60
+    # An arm64 build that fails (neko's base) is left out; an amd64 failure fails the run.
+    continue-on-error: ${{ matrix.platform.name == 'arm64' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.image.dockerfile }}
+          platforms: ${{ matrix.platform.arch }}
+          labels: org.opencontainers.image.source=https://github.com/MemoAir-labs/Airlink
+          outputs: type=image,name=ghcr.io/memoair-labs/${{ matrix.image.name }},push-by-digest=true,name-canonical=true,push=true
+      - run: |
+          mkdir -p digests
+          echo "${{ steps.build.outputs.digest }}" > "digests/${{ matrix.platform.name }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: digest-${{ matrix.image.name }}-${{ matrix.platform.name }}
+          path: digests/*
+
+  manifests:
+    needs: [publish, images]
+    if: always() && needs.publish.outputs.tags != ''
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        name: [airlink, airlink-live-server, airlink-browser, airlink-desktop, airlink-runner]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: digest-${{ matrix.name }}-*
+          path: digests
+          merge-multiple: true
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Tag what built
+        run: |
+          # Never tag an image that is missing its amd64 build.
+          test -f digests/amd64
+          image=ghcr.io/memoair-labs/${{ matrix.name }}
+          args=()
+          for tag in ${{ needs.publish.outputs.tags }}; do args+=(-t "$image:$tag"); done
+          for digest in digests/*; do args+=("$image@$(cat "$digest")"); done
+          docker buildx imagetools create "${args[@]}"

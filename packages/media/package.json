@@ -1,0 +1,34 @@
+{
+  "name": "@memo-air/media",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": false,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./server": "./src/server.ts"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MemoAir-labs/Airlink.git",
+    "directory": "packages/media"
+  },
+  "homepage": "https://memoair-labs.github.io/Airlink/docs/packages/media/",
+  "scripts": {
+    "test": "vitest --run",
+    "prepack": "node ../../scripts/prepack.mjs",
+    "postpack": "node ../../scripts/postpack.mjs"
+  },
+  "dependencies": {
+    "@livekit/rtc-node": "^1.1.0",
+    "livekit-server-sdk": "^2.19.1",
+    "yjs": "^13.6.33"
+  },
+  "devDependencies": {
+    "vitest": "^4.0.16"
+  }
+}

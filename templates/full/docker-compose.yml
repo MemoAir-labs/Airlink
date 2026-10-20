@@ -1,0 +1,117 @@
+# All of AirLink: the app (live-server runs inside it), Postgres, LiveKit for calls, the shared
+# browser, the Docker desktop and the code runner. Open http://localhost:3030.
+name: airlink-full
+
+services:
+  airlink:
+    image: ghcr.io/memoair-labs/airlink:latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      AIRLINK_DATABASE_URL: postgres://airlink:airlink@postgres:5432/airlink
+      AIRLINK_BROWSERS: '[{"cdp":"http://browser:9223","neko":"http://browser:8080","publicUrl":"http://localhost:3032"}]'
+      AIRLINK_NEKO_PASSWORD: ${AIRLINK_NEKO_PASSWORD:-airlink}
+      AIRLINK_NEKO_API_TOKEN: ${AIRLINK_NEKO_API_TOKEN:-airlink-neko}
+      AIRLINK_DESKTOP_CONTROL_URL: http://desktop:7000
+      AIRLINK_DESKTOP_VIEWER_URL: http://localhost:3034
+      AIRLINK_DESKTOP_PASSWORD: ${AIRLINK_DESKTOP_PASSWORD:-airlink}
+      AIRLINK_DESKTOP_TOKEN: ${AIRLINK_DESKTOP_TOKEN:-airlink-desktop}
+      AIRLINK_RUNNER_CONTROL_URL: http://runner:7000
+      AIRLINK_RUNNER_TOKEN: ${AIRLINK_RUNNER_TOKEN:-airlink-runner}
+      # LiveKit shares this container's network, so the browser and the server both reach it here.
+      LIVEKIT_URL: ws://localhost:7880
+    volumes:
+      - ./data:/data
+    ports:
+      - "127.0.0.1:3030:3030"
+      - "127.0.0.1:3031:3031"
+      - "127.0.0.1:7880:7880"
+      - "127.0.0.1:7881:7881"
+      - "7882:7882/udp"
+    networks: [default, runner-net]
+    restart: unless-stopped
+
+  livekit:
+    image: livekit/livekit-server:v1.9
+    command: --dev --bind 0.0.0.0
+    network_mode: service:airlink
+    depends_on: [airlink]
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: airlink
+      POSTGRES_PASSWORD: airlink
+      POSTGRES_DB: airlink
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airlink"]
+      interval: 2s
+      retries: 30
+
+  browser:
+    image: ghcr.io/memoair-labs/airlink-browser:latest
+    shm_size: 2g
+    ports:
+      - "127.0.0.1:3032:8080"
+      - "52010:52010/udp"
+    environment:
+      NEKO_DESKTOP_SCREEN: 1280x800@30
+      NEKO_WEBRTC_UDPMUX: "52010"
+      NEKO_WEBRTC_NAT1TO1: 127.0.0.1
+      NEKO_WEBRTC_ICELITE: "1"
+      NEKO_MEMBER_MULTIUSER_USER_PASSWORD: ${AIRLINK_NEKO_PASSWORD:-airlink}
+      NEKO_MEMBER_MULTIUSER_ADMIN_PASSWORD: ${AIRLINK_NEKO_PASSWORD:-airlink}-admin
+      NEKO_MEMBER_MULTIUSER_USER_PROFILE: '{"can_login":true,"can_connect":true,"can_watch":true,"can_host":false,"can_share_media":false,"can_access_clipboard":false}'
+      NEKO_SESSION_API_TOKEN: ${AIRLINK_NEKO_API_TOKEN:-airlink-neko}
+      NEKO_SERVER_CORS: http://localhost:3030 http://localhost:3032
+      LIVE_BROWSER_PROXY: http://airlink:3033
+
+  desktop:
+    image: ghcr.io/memoair-labs/airlink-desktop:latest
+    shm_size: 2g
+    ports:
+      - "127.0.0.1:3034:8080"
+      - "52011:52011/udp"
+    environment:
+      NEKO_DESKTOP_SCREEN: 1280x800@30
+      NEKO_WEBRTC_UDPMUX: "52011"
+      NEKO_WEBRTC_NAT1TO1: 127.0.0.1
+      NEKO_WEBRTC_ICELITE: "1"
+      NEKO_MEMBER_MULTIUSER_USER_PASSWORD: ${AIRLINK_DESKTOP_PASSWORD:-airlink}
+      NEKO_MEMBER_MULTIUSER_ADMIN_PASSWORD: ${AIRLINK_DESKTOP_PASSWORD:-airlink}-admin
+      NEKO_MEMBER_MULTIUSER_USER_PROFILE: '{"can_login":true,"can_connect":true,"can_watch":true,"can_host":false,"can_share_media":false,"can_access_clipboard":false}'
+      NEKO_SERVER_CORS: http://localhost:3030 http://localhost:3034
+      DESKTOP_CONTROL_TOKEN: ${AIRLINK_DESKTOP_TOKEN:-airlink-desktop}
+
+  # Agents' code runs here, each script in its own bubblewrap jail; see the runner service in the
+  # AirLink repository's apps/airlink/docker-compose.yml for why it needs these settings.
+  runner:
+    image: ghcr.io/memoair-labs/airlink-runner:latest
+    environment:
+      RUNNER_CONTROL_TOKEN: ${AIRLINK_RUNNER_TOKEN:-airlink-runner}
+    init: true
+    cpus: 1
+    mem_limit: 1g
+    pids_limit: 512
+    cap_add: [NET_ADMIN]
+    tmpfs:
+      - /var/runner:size=512m,uid=10001,mode=0700
+    networks: [runner-net]
+    security_opt:
+      - seccomp=unconfined
+      - apparmor=unconfined
+      - systempaths=unconfined
+    restart: unless-stopped
+
+networks:
+  runner-net: {}
+
+volumes:
+  postgres:

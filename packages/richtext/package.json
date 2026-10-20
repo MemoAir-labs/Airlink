@@ -1,0 +1,37 @@
+{
+  "name": "@memo-air/richtext",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": false,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MemoAir-labs/Airlink.git",
+    "directory": "packages/richtext"
+  },
+  "homepage": "https://memoair-labs.github.io/Airlink/docs/packages/richtext/",
+  "scripts": {
+    "test": "vitest --run",
+    "prepack": "node ../../scripts/prepack.mjs",
+    "postpack": "node ../../scripts/postpack.mjs"
+  },
+  "dependencies": {
+    "@tiptap/core": "^3.19.0",
+    "@tiptap/extension-unique-id": "^3.19.0",
+    "@tiptap/markdown": "^3.19.0",
+    "@tiptap/pm": "^3.19.0",
+    "@tiptap/starter-kit": "^3.19.0",
+    "@tiptap/y-tiptap": "^3.0.2",
+    "yjs": "^13.6.33"
+  },
+  "devDependencies": {
+    "vitest": "^4.0.16"
+  }
+}

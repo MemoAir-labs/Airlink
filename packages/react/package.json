@@ -1,0 +1,110 @@
+{
+  "name": "@memo-air/react",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": false,
+  "type": "module",
+  "sideEffects": ["**/*.css"],
+  "exports": {
+    ".": "./src/index.ts",
+    "./doc": "./src/entry/doc.ts",
+    "./sheet": "./src/entry/sheet.ts",
+    "./slides": "./src/entry/slides.ts",
+    "./canvas": "./src/entry/canvas.ts",
+    "./browser": "./src/entry/browser.ts",
+    "./desktop": "./src/entry/desktop.ts",
+    "./runner": "./src/entry/runner.ts",
+    "./file": "./src/entry/file.ts",
+    "./media": "./src/entry/media.ts",
+    "./all": "./src/entry/all.tsx",
+    "./ui": "./src/ui.tsx",
+    "./theme.css": "./src/theme.css"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MemoAir-labs/Airlink.git",
+    "directory": "packages/react"
+  },
+  "homepage": "https://memoair-labs.github.io/Airlink/docs/packages/react/",
+  "airlink": {
+    "platform": "browser"
+  },
+  "scripts": {
+    "prepack": "node ../../scripts/prepack.mjs",
+    "postpack": "node ../../scripts/postpack.mjs",
+    "test": "vitest --run"
+  },
+  "dependencies": {
+    "@memo-air/browser": "^0.1.0",
+    "@memo-air/canvas": "^0.1.0",
+    "@memo-air/desktop": "^0.1.0",
+    "@memo-air/media": "^0.1.0",
+    "@memo-air/protocol": "^0.1.0",
+    "@memo-air/richtext": "^0.1.0",
+    "@memo-air/runner": "^0.1.0",
+    "@memo-air/sheet": "^0.1.0",
+    "@memo-air/slides": "^0.1.0",
+    "@memo-air/space": "^0.1.0",
+    "@hocuspocus/provider": "^4.7.0",
+    "@radix-ui/react-checkbox": "^1.1.2",
+    "@radix-ui/react-dropdown-menu": "^2.1.2",
+    "clsx": "^2.1.1",
+    "date-fns": "^3.6.0",
+    "lucide-react": "^1.59.0",
+    "react-markdown": "^8.0.7",
+    "react-moveable": "0.56.0",
+    "remark-gfm": "^3.0.1",
+    "tailwind-merge": "^2.5.3",
+    "yjs": "^13.6.33"
+  },
+  "peerDependencies": {
+    "@elevenlabs/client": "^1.9.0",
+    "@excalidraw/excalidraw": "0.18.1",
+    "@mediapipe/tasks-vision": "^0.10.21",
+    "@tiptap/extension-collaboration": "3.22.1",
+    "@tiptap/extension-collaboration-caret": "3.22.1",
+    "@tiptap/react": "^3.19.0",
+    "livekit-client": "^2.16.1",
+    "react": "^18.3.1 || ^19.0.0",
+    "react-dom": "^18.3.1 || ^19.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@elevenlabs/client": {
+      "optional": true
+    },
+    "@excalidraw/excalidraw": {
+      "optional": true
+    },
+    "@mediapipe/tasks-vision": {
+      "optional": true
+    },
+    "@tiptap/extension-collaboration": {
+      "optional": true
+    },
+    "@tiptap/extension-collaboration-caret": {
+      "optional": true
+    },
+    "@tiptap/react": {
+      "optional": true
+    },
+    "livekit-client": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@elevenlabs/client": "^1.9.0",
+    "@excalidraw/excalidraw": "0.18.1",
+    "@mediapipe/tasks-vision": "^0.10.21",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.2",
+    "@tiptap/extension-collaboration": "3.22.1",
+    "@tiptap/extension-collaboration-caret": "3.22.1",
+    "@tiptap/react": "^3.19.0",
+    "jsdom": "^26.1.0",
+    "livekit-client": "^2.16.1",
+    "vitest": "^4.0.16"
+  }
+}

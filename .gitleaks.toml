@@ -1,0 +1,7 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "config key names that read an environment variable, not a literal key"
+regexTarget = "line"
+regexes = ['''^\s*[A-Za-z0-9]+ApiKey:\s*env\.[A-Z0-9_]+\s*\|\|\s*null,\s*$''']

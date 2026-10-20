@@ -1,0 +1,34 @@
+{
+  "name": "@memo-air/sheet",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": false,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./xlsx": "./src/xlsx.ts"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MemoAir-labs/Airlink.git",
+    "directory": "packages/sheet"
+  },
+  "homepage": "https://memoair-labs.github.io/Airlink/docs/packages/sheet/",
+  "scripts": {
+    "test": "vitest --run",
+    "prepack": "node ../../scripts/prepack.mjs",
+    "postpack": "node ../../scripts/postpack.mjs"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0",
+    "fast-formula-parser": "^1.0.19",
+    "yjs": "^13.6.33"
+  },
+  "devDependencies": {
+    "vitest": "^4.0.16"
+  }
+}

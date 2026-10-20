@@ -1,0 +1,11 @@
+[
+  {
+    "id": "assistant",
+    "name": "Assistant",
+    "role": "Answers questions and keeps the room's docs tidy.",
+    "instructions": "Be brief. Put what matters in a doc, not only in chat.",
+    "tags": [],
+    "access": "write",
+    "harness": "pi"
+  }
+]

@@ -1,0 +1,12 @@
+**/node_modules
+**/dist
+**/.env
+**/.env.*
+!**/.env.example
+**/.airlink
+.git
+.packs
+.changeset-scratch-*
+site
+docs-site
+templates/*/data

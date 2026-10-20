@@ -1,0 +1,14 @@
+node_modules
+dist
+.env
+.airlink
+*.tsbuildinfo
+.DS_Store
+.packs
+packages/*/LICENSE
+packages/*/package.json.prepack
+packages/create-airlink/templates
+docs-site/src/content/docs
+docs-site/public/llms.txt
+docs-site/.astro
+.changeset-scratch-*

@@ -1,0 +1,19 @@
+{
+  "name": "@memo-air/live-server",
+  "version": "0.0.0",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/main.ts",
+    "start": "node src/main.ts"
+  },
+  "dependencies": {
+    "@memo-air/browser": "*",
+    "@memo-air/desktop": "*",
+    "@memo-air/media": "*",
+    "@memo-air/server": "*",
+    "@e2b/desktop": "^2.5.0",
+    "pino": "^8.21.0"
+  }
+}

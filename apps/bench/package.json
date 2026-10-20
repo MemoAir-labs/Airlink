@@ -1,0 +1,21 @@
+{
+  "name": "@memo-air/bench",
+  "version": "0.0.0",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "bench": "node src/bench.ts",
+    "test": "vitest --run"
+  },
+  "dependencies": {
+    "@hocuspocus/provider": "^4.7.0",
+    "@livekit/rtc-node": "^1.1.0",
+    "@memo-air/protocol": "*",
+    "yjs": "^13.6.33"
+  },
+  "devDependencies": {
+    "esbuild": "^0.27.3",
+    "vitest": "^4.0.16"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "name": "@memo-air/agent",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": false,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MemoAir-labs/Airlink.git",
+    "directory": "packages/agent"
+  },
+  "homepage": "https://memoair-labs.github.io/Airlink/docs/packages/agent/",
+  "scripts": {
+    "prepack": "node ../../scripts/prepack.mjs",
+    "postpack": "node ../../scripts/postpack.mjs"
+  },
+  "dependencies": {
+    "@memo-air/decide": "^0.1.0",
+    "@memo-air/protocol": "^0.1.0",
+    "@memo-air/space": "^0.1.0"
+  }
+}

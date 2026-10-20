@@ -1,0 +1,37 @@
+{
+  "name": "@memo-air/tools",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": false,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./mcp": "./src/mcp.ts"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MemoAir-labs/Airlink.git",
+    "directory": "packages/tools"
+  },
+  "homepage": "https://memoair-labs.github.io/Airlink/docs/packages/tools/",
+  "scripts": {
+    "test": "vitest --run",
+    "prepack": "node ../../scripts/prepack.mjs",
+    "postpack": "node ../../scripts/postpack.mjs"
+  },
+  "dependencies": {
+    "@memo-air/agent": "^0.1.0",
+    "@memo-air/protocol": "^0.1.0",
+    "@memo-air/sheet": "^0.1.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^3.25.76",
+    "zod-to-json-schema": "^3.24.6"
+  },
+  "devDependencies": {
+    "vitest": "^4.0.16"
+  }
+}

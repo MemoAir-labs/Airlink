@@ -1,0 +1,45 @@
+{
+  "name": "@memo-air/voice",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": false,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MemoAir-labs/Airlink.git",
+    "directory": "packages/voice"
+  },
+  "homepage": "https://memoair-labs.github.io/Airlink/docs/packages/voice/",
+  "airlink": {
+    "platform": "node"
+  },
+  "scripts": {
+    "test": "vitest --run",
+    "prepack": "node ../../scripts/prepack.mjs",
+    "postpack": "node ../../scripts/postpack.mjs"
+  },
+  "dependencies": {
+    "@livekit/agents": "1.9.3",
+    "@livekit/agents-plugin-anthropic": "1.9.3",
+    "@livekit/agents-plugin-elevenlabs": "1.9.3",
+    "@livekit/agents-plugin-openai": "1.9.3",
+    "@livekit/local-inference": "0.2.7",
+    "@livekit/rtc-node": "^1.1.0",
+    "@memo-air/agents": "^0.1.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@memo-air/media": "^0.1.0",
+    "vitest": "^4.0.16"
+  }
+}

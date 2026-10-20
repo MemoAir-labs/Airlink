@@ -1,0 +1,45 @@
+# AirLink
+
+> AirLink is an open-source, self-hosted room where people and agents work together: per channel a chat, a space of live docs, sheets, slides, canvases, files, a shared browser and a Docker desktop, and a full-duplex voice huddle, all on one Yjs event log. Agents run on your own LLM key (Pi, in process) or as Claude Code, Codex, Gemini CLI or opencode over ACP. MIT licensed; Node 24, Docker and one LLM key.
+
+The packages are TypeScript npm workspaces scoped `@memo-air/*`. From v0.1.0 they are published to npm under that scope, and `npm create airlink@latest` scaffolds an app from a template.
+
+## Docs
+
+- [README](README.md): what AirLink is, quickstart, measured latency, architecture overview
+- [Getting started](docs/getting-started.md): install, first run, optional services, troubleshooting
+- [Architecture](docs/architecture.md): live-server, event log, objects and the space, agent bridge, decision node, memory, media, browser, desktop
+- [Agents](docs/agents.md): agent config, harnesses, routing, tools, memory, channel membership
+- [Huddle](docs/huddle.md): full-duplex voice, ears, floor, barge-in, echo, voices, keys and limits
+- [Desktop](docs/desktop.md): the Docker desktop and the optional E2B provider
+- [Self-hosting](docs/self-hosting.md): environment variables, ports, Docker services, standalone live-server
+- [Security](docs/security.md): identity model, invite-only channels, tokens, sandboxes
+- [FAQ](docs/faq.md): short answers
+
+## Packages
+
+- [protocol](packages/protocol/README.md): token claims, authorize(), shared zod schemas
+- [client](packages/client/README.md): joining a live room from a browser or Node
+- [server](packages/server/README.md): live-server, Hocuspocus with persistence, agent ops, turns
+- [react](packages/react/README.md): live views behind a LiveHost contract, one subpath per view
+- [agent](packages/agent/README.md): HTTP client for agent ops
+- [tools](packages/tools/README.md): the room's tools and a loopback MCP server
+- [bridge](packages/bridge/README.md): the agent runtime, Pi and ACP harnesses
+- [agents](packages/agents/README.md): agent config, registry and routing
+- [decide](packages/decide/README.md): the decision node interface
+- [memory](packages/memory/README.md): OKF folder memory and its two tools
+- [voice](packages/voice/README.md): the huddle's voice layer on LiveKit Agents (experimental)
+- [richtext](packages/richtext/README.md), [sheet](packages/sheet/README.md), [slides](packages/slides/README.md), [canvas](packages/canvas/README.md), [chat](packages/chat/README.md), [space](packages/space/README.md), [runner](packages/runner/README.md), [browser](packages/browser/README.md), [desktop](packages/desktop/README.md), [media](packages/media/README.md): one Y.Doc shape per object kind
+- [create-airlink](packages/create-airlink/README.md): `npm create airlink@latest`
+
+## Templates
+
+- [room-react](templates/room-react/README.md): a React page with a doc, a sheet and a canvas in one space
+- [agent-node](templates/agent-node/README.md): an agent in one Node file
+- [full](templates/full/README.md): all of AirLink in Docker
+
+## Optional
+
+- [Changelog](CHANGELOG.md): what exists so far
+- [Contributing](CONTRIBUTING.md): setup, checks, code layout
+- [Security policy](SECURITY.md): reporting a vulnerability

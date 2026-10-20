@@ -1,0 +1,31 @@
+{
+  "name": "airlink",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "A room where people and agents work together: chat, a space of live objects, voice and a shared browser, on one event log.",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "workspaces": ["packages/*", "apps/*", "templates/*"],
+  "scripts": {
+    "dev": "npm -w @memo-air/app run dev",
+    "typecheck": "sh scripts/typecheck.sh",
+    "lint": "biome check .",
+    "test": "node --test scripts/*.test.mjs docs-site/scripts/*.test.mjs && node scripts/strip-smoke.mjs && npm test --workspaces --if-present",
+    "bench": "npm -w @memo-air/bench run bench",
+    "licenses": "node scripts/licenses.mjs",
+    "pack:all": "node scripts/pack-all.mjs",
+    "changeset": "sh scripts/changeset.sh"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.5",
+    "@biomejs/biome": "2.5.1",
+    "@changesets/changelog-github": "^1.0.1",
+    "@changesets/cli": "^3.0.3",
+    "@typescript/native-preview": "^7.0.0-dev.20260608.1",
+    "publint": "^0.3.25",
+    "tsdown": "^0.23.1",
+    "typescript": "^5.9.3"
+  }
+}

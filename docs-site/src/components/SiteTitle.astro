@@ -1,0 +1,18 @@
+---
+// The title goes to the landing page one level up (P7), not to the docs' own home.
+const home = import.meta.env.BASE_URL.replace(/docs\/?$/, "");
+---
+
+<a href={home} class="site-title">AirLink</a>
+
+<style>
+  .site-title {
+    display: flex;
+    align-items: center;
+    color: var(--sl-color-white);
+    font-size: var(--sl-text-h4);
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+</style>

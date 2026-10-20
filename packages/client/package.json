@@ -1,0 +1,41 @@
+{
+  "name": "@memo-air/client",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": false,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MemoAir-labs/Airlink.git",
+    "directory": "packages/client"
+  },
+  "homepage": "https://memoair-labs.github.io/Airlink/docs/packages/client/",
+  "scripts": {
+    "test": "vitest --run",
+    "prepack": "node ../../scripts/prepack.mjs",
+    "postpack": "node ../../scripts/postpack.mjs"
+  },
+  "dependencies": {
+    "@hocuspocus/provider": "^4.7.0",
+    "@memo-air/protocol": "^0.1.0",
+    "yjs": "^13.6.33"
+  },
+  "peerDependencies": {
+    "livekit-client": "^2.16.0"
+  },
+  "peerDependenciesMeta": {
+    "livekit-client": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "vitest": "^4.0.16"
+  }
+}

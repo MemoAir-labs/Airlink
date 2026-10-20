@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: airlink
+          POSTGRES_PASSWORD: airlink
+          POSTGRES_DB: airlink_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U airlink"
+          --health-interval 2s
+          --health-retries 30
+    env:
+      TEST_LIVE_DATABASE_URI: postgres://airlink:airlink@127.0.0.1:5432/airlink_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: No secrets in the tree
+        run: docker run --rm -v "$PWD:/scan:ro" ghcr.io/gitleaks/gitleaks:v8.28.0 dir /scan --redact --no-banner
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run licenses
+      - run: npm test
+      - name: Bench smoke (keystroke fan-out, 10 s)
+        run: |
+          export LIVE_DATABASE_URL="$TEST_LIVE_DATABASE_URI" LIVE_JWT_SECRET=ci-secret
+          npm -w @memo-air/live-server run start > live-server.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf localhost:3020/healthz >/dev/null && break; sleep 1; done
+          npm -w @memo-air/bench run bench -- --server ws://localhost:3020 --rooms 1 --clients 2 --seconds 10
+
+  packages:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run pack:all
+      - name: postpack restored every package.json
+        run: git diff --exit-code -- '**/package.json'
+      - run: node scripts/check-packs.mjs
+      - name: No secrets in the tarballs
+        run: |
+          scan=$(mktemp -d)
+          for tarball in .packs/*.tgz; do
+            name=$(basename "$tarball" .tgz)
+            mkdir "$scan/$name"
+            tar -xzf "$tarball" -C "$scan/$name"
+          done
+          docker run --rm -v "$scan:/scan:ro" ghcr.io/gitleaks/gitleaks:v8.28.0 dir /scan --redact --no-banner
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: node scripts/consumer-smoke.mjs
+      - run: node scripts/template-smoke.mjs
+
+  images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f docker/browser.Dockerfile -t airlink-browser:ci .
+      - run: docker build -f docker/live-server.Dockerfile -t airlink-live-server:ci .
+      - run: docker build -f docker/airlink.Dockerfile -t airlink:ci .

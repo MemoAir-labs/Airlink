@@ -1,0 +1,31 @@
+# Postgres and a standalone live-server for this app. live-server checks every token with
+# LIVE_JWT_SECRET, which docker compose reads from .env next to this file.
+name: airlink-room
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: airlink
+      POSTGRES_PASSWORD: airlink
+      POSTGRES_DB: airlink
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airlink"]
+      interval: 2s
+      retries: 30
+
+  live-server:
+    image: ghcr.io/memoair-labs/airlink-live-server:latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      LIVE_DATABASE_URL: postgres://airlink:airlink@postgres:5432/airlink
+      LIVE_JWT_SECRET: ${LIVE_JWT_SECRET:?set LIVE_JWT_SECRET in .env}
+    ports:
+      - "127.0.0.1:3020:3020"
+
+volumes:
+  postgres:

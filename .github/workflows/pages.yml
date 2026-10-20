@@ -1,0 +1,87 @@
+name: Pages
+
+# One project site at /Airlink/: the landing page (site/) at the root and the docs (docs-site/) at
+# /docs/, built into one artifact. Pull requests build it without deploying.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - "docs-site/**"
+      - "docs/**"
+      - "README.md"
+      - "packages/*/README.md"
+      - "packages/*/src/**"
+      - "templates/**/README.md"
+      - "llms.txt"
+      - ".github/workflows/pages.yml"
+  pull_request:
+    paths:
+      - "site/**"
+      - "docs-site/**"
+      - "docs/**"
+      - "README.md"
+      - "packages/*/README.md"
+      - "packages/*/src/**"
+      - "templates/**/README.md"
+      - "llms.txt"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            site/package-lock.json
+            docs-site/package-lock.json
+      - uses: actions/configure-pages@v5
+      - run: npm ci
+      - run: npm run build
+        env:
+          SITE_BASE: /Airlink/
+      # The API reference reads the packages' source, whose imports resolve from the root install.
+      - name: Root install, for the API reference
+        working-directory: .
+        run: npm ci
+      - name: Docs at /Airlink/docs/
+        working-directory: docs-site
+        run: npm ci && npm run build
+      - name: One artifact
+        run: |
+          cp -R ../docs-site/dist dist/docs
+          cp ../docs-site/dist/llms.txt dist/llms.txt
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/dist
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

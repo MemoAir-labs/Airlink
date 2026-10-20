@@ -1,0 +1,12 @@
+{
+  "changelog": ["@changesets/changelog-github", { "repo": "MemoAir-labs/Airlink" }],
+  "commit": false,
+  "fixed": [["@memo-air/*", "create-airlink"]],
+  "linked": [],
+  "access": "public",
+  "baseBranch": "main",
+  "updateInternalDependencies": "patch",
+  "ignore": [],
+  "privatePackages": { "version": false, "tag": false },
+  "snapshot": { "useCalculatedVersion": true, "prereleaseTemplate": "{tag}-{datetime}" }
+}

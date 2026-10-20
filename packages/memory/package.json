@@ -1,0 +1,38 @@
+{
+  "name": "@memo-air/memory",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": false,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MemoAir-labs/Airlink.git",
+    "directory": "packages/memory"
+  },
+  "homepage": "https://memoair-labs.github.io/Airlink/docs/packages/memory/",
+  "airlink": {
+    "platform": "node"
+  },
+  "scripts": {
+    "test": "vitest --run",
+    "prepack": "node ../../scripts/prepack.mjs",
+    "postpack": "node ../../scripts/postpack.mjs"
+  },
+  "dependencies": {
+    "yaml": "^2.9.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "vitest": "^4.0.16"
+  }
+}

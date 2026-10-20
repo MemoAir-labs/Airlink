@@ -1,0 +1,57 @@
+{
+  "name": "@memo-air/server",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": false,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MemoAir-labs/Airlink.git",
+    "directory": "packages/server"
+  },
+  "homepage": "https://memoair-labs.github.io/Airlink/docs/packages/server/",
+  "airlink": {
+    "platform": "node"
+  },
+  "scripts": {
+    "test": "vitest --run",
+    "prepack": "node ../../scripts/prepack.mjs",
+    "postpack": "node ../../scripts/postpack.mjs"
+  },
+  "dependencies": {
+    "@hocuspocus/extension-redis": "^4.7.0",
+    "@hocuspocus/server": "^4.7.0",
+    "@memo-air/agents": "^0.1.0",
+    "@memo-air/browser": "^0.1.0",
+    "@memo-air/canvas": "^0.1.0",
+    "@memo-air/chat": "^0.1.0",
+    "@memo-air/decide": "^0.1.0",
+    "@memo-air/desktop": "^0.1.0",
+    "@memo-air/media": "^0.1.0",
+    "@memo-air/protocol": "^0.1.0",
+    "@memo-air/richtext": "^0.1.0",
+    "@memo-air/sheet": "^0.1.0",
+    "@memo-air/slides": "^0.1.0",
+    "@memo-air/space": "^0.1.0",
+    "@prometheus-io/client": "^0.16.1",
+    "pg": "^8.8.0",
+    "pino": "^8.21.0",
+    "y-protocols": "^1.0.6",
+    "yjs": "^13.6.33"
+  },
+  "devDependencies": {
+    "@hocuspocus/provider": "^4.7.0",
+    "@types/pg": "^8.11.11",
+    "vitest": "^4.0.16"
+  }
+}
