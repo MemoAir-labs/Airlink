@@ -9,3 +9,76 @@ body,
 #root {
   height: 100%;
 }
+
+::selection {
+  background: color-mix(in oklch, var(--color-highlight-500) 28%, transparent);
+}
+
+/* Home's hero: the sidebar's deep ocean lit by the mark's blue and teal. */
+.home-hero {
+  background-image:
+    radial-gradient(60% 90% at 100% 0%, oklch(55% 0.12 200 / 0.45), transparent 70%),
+    radial-gradient(50% 80% at 0% 100%, oklch(50% 0.13 245 / 0.4), transparent 70%);
+}
+
+.home-write {
+  width: 100%;
+  transform-origin: left;
+  animation: home-write 5.4s cubic-bezier(0.16, 1, 0.3, 1) infinite both;
+}
+
+.home-caret {
+  animation: home-caret 5.4s cubic-bezier(0.16, 1, 0.3, 1) infinite both;
+}
+
+.home-ping {
+  animation: home-ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes home-write {
+  0% {
+    transform: scaleX(0);
+    opacity: 1;
+  }
+  45%,
+  85% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scaleX(1);
+    opacity: 0;
+  }
+}
+
+@keyframes home-caret {
+  0% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  45%,
+  85% {
+    transform: translateX(100%);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes home-ping {
+  75%,
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-write,
+  .home-caret,
+  .home-ping {
+    animation: none;
+  }
+}

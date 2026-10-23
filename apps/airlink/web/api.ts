@@ -1,5 +1,4 @@
 import { agentConfigSchema } from "@memo-air/agents";
-import { docSummarySchema } from "@memo-air/protocol";
 import { useCallback, useEffect, useState } from "react";
 import { z } from "zod";
 
@@ -110,16 +109,6 @@ export const settingsSchema = z.object({
   }),
 });
 export type PublicSettings = z.infer<typeof settingsSchema>["settings"];
-
-export const homeSchema = z.object({
-  items: z.array(
-    z.object({
-      object: objectSchema,
-      channelName: z.string(),
-      summary: docSummarySchema,
-    })
-  ),
-});
 
 const errorSchema = z.object({ error: z.string() });
 

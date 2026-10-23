@@ -2,12 +2,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import type { AgentConfig } from "@memo-air/agents";
 import type { agentMemory, DetectedHarness } from "@memo-air/bridge";
 import type { LiveActor, LiveDocKind } from "@memo-air/protocol";
-import { summariesResponseSchema } from "@memo-air/protocol";
-import {
-  signLiveServiceToken,
-  signLiveToken,
-  verifyLiveToken,
-} from "@memo-air/protocol/tokens";
+import { signLiveToken, verifyLiveToken } from "@memo-air/protocol/tokens";
 import { notSetUpText } from "@memo-air/runner";
 import type { SpeechProviderId, VoiceOption } from "@memo-air/voice";
 import { z } from "zod";
@@ -355,61 +350,6 @@ export function createApi(deps: AirlinkApiDeps) {
     });
     response.end(file.bytes);
     return null;
-  };
-
-  const home = async (person: Person): Promise<Reply> => {
-    const [allChannels, allObjects, standing] = await Promise.all([
-      store.listChannels(),
-      store.allObjects(),
-      store.standingOf(person.id),
-    ]);
-    const channels = allChannels.filter(
-      (channel) => channel.open || standing.memberOf.has(channel.id)
-    );
-    const visible = new Set(channels.map((channel) => channel.id));
-    const objects = allObjects.filter((object) =>
-      visible.has(object.channelId)
-    );
-    // ponytail: the newest 200 objects (the summaries route's cap); paginate when a workspace
-    // outgrows it.
-    const shown = objects.slice(-200);
-    if (!shown.length) {
-      return { status: 200, body: { items: [] } };
-    }
-    const upstream = await fetch(`${liveUrl}/v1/summaries`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${signLiveServiceToken(workspaceId, secret)}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        docNames: shown.map((object) => object.docName),
-        viewerId: person.id,
-      }),
-    });
-    if (!upstream.ok) {
-      return fail(502, "live-server did not answer.");
-    }
-    const { summaries } = summariesResponseSchema.parse(await upstream.json());
-    const channelNames = new Map(channels.map((c) => [c.id, c.name]));
-    const objectsByDoc = new Map(shown.map((o) => [o.docName, o]));
-    return {
-      status: 200,
-      body: {
-        items: summaries.flatMap((summary) => {
-          const object = objectsByDoc.get(summary.docName);
-          return object
-            ? [
-                {
-                  object,
-                  channelName: channelNames.get(object.channelId) ?? "",
-                  summary,
-                },
-              ]
-            : [];
-        }),
-      },
-    };
   };
 
   // A page on another site can reach localhost through DNS rebinding or a plain form post, and
@@ -973,9 +913,6 @@ export function createApi(deps: AirlinkApiDeps) {
         forwarded[2],
         url.search
       );
-    }
-    if (path === "/api/home" && method === "GET") {
-      return home(person);
     }
     if (path === "/api/transcribe-token" && method === "POST") {
       const token = await deps.transcribeToken();

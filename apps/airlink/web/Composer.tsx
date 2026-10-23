@@ -10,13 +10,19 @@ import {
   Spinner,
   XClose,
 } from "@memo-air/react/ui";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Avatar } from "./Avatar.tsx";
 
 // Someone a message can name: a person in the channel or one of its agents.
 export type Mentionable = ChatMention & { detail?: string };
 
 type Pending = { key: string; name: string; attachment: ChatAttachment | null };
+
+// Text Home hands to the next composer that opens, so a starter prompt lands ready to send.
+let queuedDraft = "";
+export function queueDraft(text: string) {
+  queuedDraft = text;
+}
 
 interface ComposerProps {
   mentionables: Mentionable[];
@@ -43,13 +49,16 @@ export function Composer({
   onUpload,
   onSend,
 }: ComposerProps) {
-  const [text, setText] = useState("");
+  const [text, setText] = useState(() => queuedDraft);
   const [picked, setPicked] = useState<Mentionable[]>([]);
   const [query, setQuery] = useState<string | null>(null);
   const [highlighted, setHighlighted] = useState(0);
   const [pending, setPending] = useState<Pending[]>([]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    queuedDraft = "";
+  }, []);
 
   const matches =
     query === null
@@ -136,7 +145,7 @@ export function Composer({
     onSend({
       text: trimmed,
       // A chip whose @Name was deleted from the text is no longer a mention.
-      mentions: picked
+      mentions: (picked.length ? picked : mentionables)
         .filter((each) => trimmed.includes(`@${each.name}`))
         .map(({ kind, id, name }) => ({ kind, id, name })),
       attachments,

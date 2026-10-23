@@ -342,7 +342,15 @@ function Workspace({ person }: { person: Person }) {
         </div>
       </nav>
       <main className="flex min-h-0 min-w-0 flex-1 flex-col">
-        {current?.page === "home" && <Home channels={list} />}
+        {current?.page === "home" && (
+          <Home
+            channels={list}
+            agents={agents}
+            onOpenSettings={() => setSettingsOpen(true)}
+            onNewChannel={() => setNewName("")}
+            onNewAgent={createAgent}
+          />
+        )}
         {current?.page === "agent" &&
           (() => {
             const agent = agents.find((each) => each.id === current.id);

@@ -418,13 +418,6 @@ export function createStore(pool: pg.Pool) {
       )
     ).rowCount ?? 0) > 0;
 
-  const allObjects = async (): Promise<ChannelObject[]> =>
-    (
-      await pool.query(
-        "SELECT doc_name, channel_id, kind, title FROM airlink_objects ORDER BY created_at"
-      )
-    ).rows.map(objectFromRow);
-
   const addObject = async (input: {
     channelId: string;
     kind: LiveDocKind;
@@ -820,7 +813,6 @@ export function createStore(pool: pg.Pool) {
     listChannels,
     channel,
     objects,
-    allObjects,
     addObject,
     addFile,
     fileInfo,
