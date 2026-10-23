@@ -3,12 +3,21 @@ import type { LiveDockItem } from "@memo-air/react";
 import { LiveHostProvider } from "@memo-air/react";
 import { LiveObjectView } from "@memo-air/react/all";
 import {
+  AtSign,
   Button,
+  ChevronDown,
   cn,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
   Hash02,
   Headphones01,
   Icon,
   LayoutGrid01,
+  Sparkles,
   UserPlus,
   useSendNotification,
   XClose,
@@ -31,7 +40,27 @@ import { AirlinkViewProvider, airlinkHost } from "./host.tsx";
 import type { MembersTab } from "./MembersDialog.tsx";
 import { MembersDialog } from "./MembersDialog.tsx";
 
-const channelBodySchema = z.object({ objects: z.array(objectSchema) });
+const repliesSchema = z.enum(["auto", "tagged"]);
+const channelBodySchema = z.object({
+  channel: z.object({ replies: repliesSchema }),
+  objects: z.array(objectSchema),
+});
+const okSchema = z.object({ ok: z.boolean() });
+const replyModes = {
+  auto: {
+    icon: Sparkles,
+    chip: "Agents: Auto",
+    label: "Automatically",
+    description:
+      "An agent jumps in when a message is for it, even without an @.",
+  },
+  tagged: {
+    icon: AtSign,
+    chip: "Agents: On mention",
+    label: "Only when @-mentioned",
+    description: "Agents stay quiet until someone @-mentions them.",
+  },
+} as const;
 const deletedSchema = z.object({ ok: z.boolean(), deleted: z.boolean() });
 const createdSchema = z.object({ object: objectSchema });
 const membershipCheckMs = 10_000;
@@ -284,6 +313,60 @@ export function Channel({
                 className="ml-1"
                 onClick={() => setShowMembers("add")}
               />
+            )}
+            {data && (
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  className={cn(
+                    "ml-2 flex shrink-0 items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-highlight",
+                    data.channel.replies === "auto"
+                      ? "bg-highlight-100 text-highlight-800 hover:bg-highlight-200 dark:bg-highlight-900 dark:text-highlight-100"
+                      : "bg-muted-background text-muted-foreground hover:text-foreground"
+                  )}
+                  aria-label={`When agents reply: ${replyModes[data.channel.replies].label}`}
+                >
+                  <Icon
+                    visual={replyModes[data.channel.replies].icon}
+                    size="xs"
+                  />
+                  {replyModes[data.channel.replies].chip}
+                  <Icon visual={ChevronDown} size="xs" className="opacity-60" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuLabel label="When should agents reply?" />
+                  <DropdownMenuRadioGroup
+                    value={data.channel.replies}
+                    onValueChange={async (value) => {
+                      const mode = repliesSchema.safeParse(value);
+                      if (!mode.success || mode.data === data.channel.replies) {
+                        return;
+                      }
+                      const result = await api(
+                        `/api/channels/${channel.id}/replies`,
+                        okSchema,
+                        { method: "POST", body: { replies: mode.data } }
+                      );
+                      if (!result.ok) {
+                        notify({
+                          type: "error",
+                          title: "Could not change when agents reply",
+                          description: result.error,
+                        });
+                      }
+                      reload();
+                    }}
+                  >
+                    {repliesSchema.options.map((mode) => (
+                      <DropdownMenuRadioItem
+                        key={mode}
+                        value={mode}
+                        label={replyModes[mode].label}
+                        description={replyModes[mode].description}
+                      />
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </h1>
           {members.length > 0 && (

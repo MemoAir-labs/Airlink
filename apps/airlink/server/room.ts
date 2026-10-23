@@ -12,6 +12,7 @@ import {
 import { fileText } from "./extract.ts";
 import type { Runner } from "./runner.ts";
 import { describeRun, unreachableText } from "./runner.ts";
+import type { SearchIndex } from "./search.ts";
 import type { Store } from "./store.ts";
 
 import { workspaceId } from "./workspace.ts";
@@ -23,11 +24,13 @@ export function createRoom({
   liveUrl,
   jwtSecret,
   runner,
+  searchIndex,
 }: {
   store: Store;
   liveUrl: string;
   jwtSecret: string;
   runner?: Runner;
+  searchIndex?: SearchIndex;
 }): BridgeRoom {
   const clientFor = (actor: LiveActor, docName: string) =>
     createLiveAgentClient({
@@ -68,7 +71,12 @@ export function createRoom({
               text: "That runner is still running its last job; wait for it to finish, then call run_code again.",
             };
           }
-          await store.updateRunner(runnerId, { title, language, code });
+          await store.updateRunner(runnerId, {
+            title,
+            language,
+            code,
+            agentId: agent.id,
+          });
         }
         const docName =
           runnerId ??
@@ -136,6 +144,9 @@ export function createRoom({
       const file = await store.fileBytes(docName);
       return file ? fileText(file) : { ok: false, text: "That file is gone." };
     },
+    searchRoom: searchIndex?.searchRoom,
+    taggedOnly: async (chatDoc) =>
+      (await store.docOf(chatDoc))?.channel.replies === "tagged",
     agentIdsOf: async (chatDoc) => {
       const found = await store.docOf(chatDoc);
       return !found || found.channel.open

@@ -86,9 +86,18 @@ export const turnThreshold = 0.5;
 export const rememberThreshold = 0.5;
 const maxStateChars = 2000;
 
+// In chat a person who writes without naming anyone is asking the room, so an agent answers unless
+// the message is plainly for another person; a call is mostly people talking, so there anything
+// that needs no agent stays with them.
+const noAgentInChat =
+  "The message is addressed to another person in the room by name, not to an agent.";
+const noAgentInCall =
+  "The message is for a person in the room, or it needs no agent: small talk, a remark, something already answered.";
+
 export function routeQuestion(
   text: string,
-  candidates: RoutableAgent[]
+  candidates: RoutableAgent[],
+  none: string = noAgentInChat
 ): DecideInput {
   const criteria: Record<string, string> = Object.fromEntries(
     candidates.map((agent) => [
@@ -96,8 +105,7 @@ export function routeQuestion(
       agent.role ? `${agent.name}: ${agent.role}` : agent.name,
     ])
   );
-  criteria.none =
-    "The message is for a person in the room, or it needs no agent: small talk, a remark, something already answered.";
+  criteria.none = none;
   return {
     point: "agent",
     state: `A person wrote in a room shared with ${candidates.length} agents, naming nobody:\n${text.slice(0, maxStateChars)}`,
@@ -105,7 +113,7 @@ export function routeQuestion(
       agent: {
         type: "choice",
         instructions:
-          "Which agent should answer this message, judged from the message and each agent's role alone. Pick the agent whose role covers what the person asked; pick none when the message is for a person or needs no agent.",
+          "Which agent should answer this message, judged from the message and each agent's role alone. Pick the agent whose role covers what the person asked, else the one whose role is closest; pick none only when the message fits none's criterion.",
         criteria,
       },
     },
@@ -138,7 +146,7 @@ export async function routeSpoken(
     return named.map((agent) => agent.id);
   }
   const decision = await decide({
-    ...routeQuestion(text, agents),
+    ...routeQuestion(text, agents, noAgentInCall),
     state: `A person said this aloud in a call shared with ${agents.length} agents, naming nobody:\n${text.slice(0, maxStateChars)}`,
   });
   const answer = decision.answers?.agent;

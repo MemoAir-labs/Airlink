@@ -31,7 +31,11 @@ export type VoiceSetup = {
 
 export type VoiceHost = {
   agentsIn(callDoc: string): Promise<AgentConfig[]>;
-  route(text: string, agents: AgentConfig[]): Promise<string[]>;
+  route(
+    text: string,
+    agents: AgentConfig[],
+    callDoc: string
+  ): Promise<string[]>;
   work(agent: AgentConfig, callDoc: string, task: string): Promise<string>;
   postToChat(agent: AgentConfig, callDoc: string, text: string): Promise<void>;
   writeLine(
@@ -122,7 +126,7 @@ export function createVoice(setup: VoiceSetup, host: VoiceHost) {
         });
       },
       agents: () => host.agentsIn(callDoc),
-      route: host.route,
+      route: (text, agents) => host.route(text, agents, callDoc),
       work: (agent, task) => host.work(agent, callDoc, task),
       postToChat: (agent, text) => host.postToChat(agent, callDoc, text),
       writeLine: (actor, line) => host.writeLine(callDoc, actor, line),

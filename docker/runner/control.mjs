@@ -3,7 +3,12 @@
 // /etc, and the network. Whoever holds the token can run code here, so the port stays on loopback
 // and the token stays out of every jail (--clearenv, its own PID namespace, a fresh /proc).
 import { spawn } from "node:child_process";
-import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
+import {
+  createHash,
+  randomBytes,
+  randomUUID,
+  timingSafeEqual,
+} from "node:crypto";
 import {
   chmod,
   cp,
@@ -15,6 +20,7 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { createServer } from "node:http";
+import { createServer as createSocketServer } from "node:net";
 import { tmpdir } from "node:os";
 import { extname, join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -38,6 +44,71 @@ const walkMaxDepth = 16;
 const jailPath = "/usr/local/bin:/usr/bin:/bin";
 const fileNamePattern = /^[^/\\\0]{1,200}$/;
 const allowedHostnames = ["localhost", "127.0.0.1", "[::1]", "runner"];
+const maxToolLineBytes = 1024 * 1024;
+const toolWaitMs = 30_000;
+
+// The room's tools, for a script AirLink runs with them: each call goes over a socket to this
+// server, which streams it to AirLink on the open /run response and waits for /tool-result. The
+// jail stays off every local network; the socket is its one way to AirLink, and AirLink decides
+// what each call may do.
+const roomPython = `import json
+import socket
+
+
+def _call(name, args):
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as conn:
+        conn.connect("/room/sock")
+        conn.sendall((json.dumps({"name": name, "args": args}) + "\\n").encode())
+        data = b""
+        while not data.endswith(b"\\n"):
+            chunk = conn.recv(65536)
+            if not chunk:
+                break
+            data += chunk
+    reply = json.loads(data or b"{}")
+    if not reply.get("ok"):
+        raise RuntimeError(reply.get("text") or "the tool call failed")
+    return reply["text"]
+
+
+class _Room:
+    def __getattr__(self, name):
+        if name.startswith("_"):
+            raise AttributeError(name)
+        return lambda **args: _call(name, args)
+
+
+room = _Room()
+`;
+
+const roomNode = `import { createConnection } from "node:net";
+
+const call = (name, args = {}) =>
+  new Promise((resolve, reject) => {
+    const conn = createConnection("/room/sock");
+    let data = "";
+    conn.setEncoding("utf8");
+    conn.on("data", (chunk) => {
+      data += chunk;
+      if (data.endsWith("\\n")) conn.end();
+    });
+    conn.on("end", () => {
+      try {
+        const reply = JSON.parse(data || "{}");
+        reply.ok ? resolve(reply.text) : reject(new Error(reply.text || "the tool call failed"));
+      } catch (err) {
+        reject(err);
+      }
+    });
+    conn.on("error", reject);
+    conn.write(JSON.stringify({ name, args }) + "\\n");
+  });
+
+export const room = new Proxy(
+  {},
+  { get: (_, name) => (typeof name === "string" && name !== "then" ? (args) => call(name, args) : undefined) }
+);
+`;
 
 const mimes = {
   ".png": "image/png",
@@ -72,7 +143,7 @@ const digest = (value) => createHash("sha256").update(value).digest();
 
 // The argv for prlimit, which applies the per-run limits and execs bwrap with them; choom makes a
 // jail the kernel's first choice when the container runs out of memory, not the control server.
-export function jailArgv({ dir, language }) {
+export function jailArgv({ dir, language, tools = false }) {
   const command =
     language === "python"
       ? ["python3", "/code/main.py"]
@@ -136,6 +207,7 @@ export function jailArgv({ dir, language }) {
     "--bind",
     join(dir, "out"),
     "/out",
+    ...(tools ? ["--bind", join(dir, "room"), "/room"] : []),
     "--setenv",
     "PATH",
     jailPath,
@@ -302,7 +374,7 @@ export const runJail = (file, args, { timeoutMs }) =>
   });
 
 function parseRun(body) {
-  const { language, code, files = [], timeoutMs } = body ?? {};
+  const { language, code, files = [], timeoutMs, tools = false } = body ?? {};
   if (language !== "python" && language !== "node") {
     throw new BadRequest("language is python or node");
   }
@@ -339,7 +411,53 @@ function parseRun(body) {
     }
     names.add(file.name);
   }
-  return { language, code, files, timeoutMs };
+  if (typeof tools !== "boolean") {
+    throw new BadRequest("tools is true or false");
+  }
+  return { language, code, files, timeoutMs, tools };
+}
+
+// Serves the jail's tool calls on <dir>/room/sock for one run: each connection is one call,
+// a JSON line in and a JSON line out, answered by `ask`.
+async function serveRoom(dir, ask) {
+  await mkdir(join(dir, "room"), { recursive: true, mode: 0o700 });
+  const path = join(dir, "room", "sock");
+  const server = createSocketServer((conn) => {
+    let line = "";
+    conn.setEncoding("utf8");
+    const reply = (answer) => conn.end(`${JSON.stringify(answer)}\n`);
+    conn.on("error", () => conn.destroy());
+    conn.on("data", async (chunk) => {
+      line += chunk;
+      if (line.length > maxToolLineBytes) {
+        reply({ ok: false, text: "That tool call is too large." });
+        return;
+      }
+      const end = line.indexOf("\n");
+      if (end < 0) {
+        return;
+      }
+      conn.removeAllListeners("data");
+      let call;
+      try {
+        call = JSON.parse(line.slice(0, end));
+      } catch {
+        reply({ ok: false, text: "A tool call is one JSON line." });
+        return;
+      }
+      if (typeof call?.name !== "string") {
+        reply({ ok: false, text: "A tool call names its tool." });
+        return;
+      }
+      reply(await ask(call.name, call.args ?? {}));
+    });
+  });
+  await new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(path, resolve);
+  });
+  await chmod(path, 0o600);
+  return () => new Promise((resolve) => server.close(() => resolve()));
 }
 
 // A page on any site can point its own name at 127.0.0.1 and post here as same-origin; the Host it
@@ -388,8 +506,10 @@ export function createRunnerHandler({
       req.on("error", reject);
     });
 
-  const run = async (request) => {
-    const dir = join(workDir, `run-${randomUUID()}`);
+  const run = async (request, ask = null) => {
+    // Short, since the run's tool socket lives under it and a Unix socket path caps at 104 bytes.
+    const dir = join(workDir, `run-${randomBytes(8).toString("hex")}`);
+    let closeRoom = null;
     try {
       for (const part of ["tmp", "code", "files", "out"]) {
         await mkdir(join(dir, part), { recursive: true, mode: 0o700 });
@@ -413,14 +533,20 @@ export function createRunnerHandler({
           Buffer.from(file.contentBase64, "base64")
         );
       }
+      if (ask) {
+        await writeFile(join(dir, "code", "room.py"), roomPython);
+        await writeFile(join(dir, "code", "room.mjs"), roomNode);
+        closeRoom = await serveRoom(dir, ask);
+      }
       const result = await jail(
         "prlimit",
-        jailArgv({ dir, language: request.language }),
+        jailArgv({ dir, language: request.language, tools: Boolean(ask) }),
         { timeoutMs: request.timeoutMs }
       );
       await restoreAccess(join(dir, "out"));
       return { ...result, ...(await collectOutputs(join(dir, "out"))) };
     } finally {
+      await closeRoom?.();
       await restoreAccess(dir);
       await rm(dir, { recursive: true, force: true }).catch((err) =>
         process.stderr.write(`control: could not remove ${dir}: ${err}\n`)
@@ -429,6 +555,38 @@ export function createRunnerHandler({
   };
 
   let activeRuns = 0;
+  const pendingTools = new Map();
+
+  // A run with tools answers as NDJSON: a {"type":"tool"} line per call the jail makes, which
+  // AirLink answers on /tool-result, then one {"type":"result"} line.
+  const streamRun = async (res, request) => {
+    res.writeHead(200, { "content-type": "application/x-ndjson" });
+    const ask = (name, args) =>
+      new Promise((resolve) => {
+        const id = randomUUID();
+        const timer = setTimeout(() => {
+          pendingTools.delete(id);
+          resolve({ ok: false, text: "AirLink did not answer the tool call." });
+        }, toolWaitMs);
+        pendingTools.set(id, (answer) => {
+          clearTimeout(timer);
+          pendingTools.delete(id);
+          resolve(answer);
+        });
+        res.write(`${JSON.stringify({ type: "tool", id, name, args })}\n`);
+      });
+    try {
+      const result = await run(request, ask);
+      res.end(`${JSON.stringify({ type: "result", ...result })}\n`);
+    } catch (err) {
+      process.stderr.write(
+        `control: run failed: ${err instanceof Error ? err.stack : String(err)}\n`
+      );
+      res.end(
+        `${JSON.stringify({ type: "error", error: "the runner failed; see its logs" })}\n`
+      );
+    }
+  };
 
   return async (req, res) => {
     if (!hostAllowed(req.headers.host, extraHostnames)) {
@@ -445,6 +603,25 @@ export function createRunnerHandler({
     }
     try {
       if (req.method === "GET" && req.url === "/health") {
+        send(res, 200, { ok: true });
+        return;
+      }
+      if (req.method === "POST" && req.url === "/tool-result") {
+        let answer;
+        try {
+          answer = JSON.parse(await readBody(req, res));
+        } catch (err) {
+          throw err instanceof BadRequest ? err : new BadRequest("bad JSON");
+        }
+        const settle = pendingTools.get(answer?.id);
+        if (!settle) {
+          send(res, 404, { error: "no such tool call" });
+          return;
+        }
+        settle({
+          ok: answer.ok === true,
+          text: typeof answer.text === "string" ? answer.text : "",
+        });
         send(res, 200, { ok: true });
         return;
       }
@@ -467,7 +644,12 @@ export function createRunnerHandler({
         } catch (err) {
           throw err instanceof BadRequest ? err : new BadRequest("bad JSON");
         }
-        send(res, 200, await run(parseRun(body)));
+        const request = parseRun(body);
+        if (request.tools) {
+          await streamRun(res, request);
+        } else {
+          send(res, 200, await run(request));
+        }
       } finally {
         activeRuns--;
       }

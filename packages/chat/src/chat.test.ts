@@ -7,6 +7,7 @@ import {
   isChatDoc,
   postMessage,
   react,
+  readLastAdded,
   readMessages,
 } from "./index.ts";
 
@@ -19,6 +20,21 @@ function sync(a: Y.Doc, b: Y.Doc) {
 }
 
 describe("chat", () => {
+  it("reads the latest-arrived messages even when a poster's clock is behind", () => {
+    const doc = new Y.Doc();
+    postMessage(doc, { id: "m1", text: "first", ts: 5000 }, hana);
+    postMessage(doc, { id: "m2", text: "slow clock", ts: 1000 }, juno);
+
+    expect(readLastAdded(doc, 1).map((message) => message.id)).toEqual(["m2"]);
+    expect(readLastAdded(doc, 100).map((message) => message.id)).toEqual([
+      "m1",
+      "m2",
+    ]);
+    expect(
+      readMessages(doc, { limit: 1 }).map((message) => message.id)
+    ).toEqual(["m1"]);
+  });
+
   it("orders concurrent posts by ts, then id, the same on every peer", () => {
     const a = new Y.Doc();
     const b = new Y.Doc();

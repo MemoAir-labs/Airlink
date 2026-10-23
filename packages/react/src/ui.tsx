@@ -39,6 +39,7 @@ import {
   Search,
   Send,
   Settings,
+  Sparkles,
   Sun,
   Table,
   Terminal,
@@ -109,6 +110,7 @@ export {
   AtSign,
   Captions,
   Check,
+  ChevronDown,
   Maximize,
   Mic,
   MicOff,
@@ -117,6 +119,7 @@ export {
   Plus,
   ScanFace,
   Search,
+  Sparkles,
   Sun,
   UserPlus,
   Video,
@@ -391,17 +394,39 @@ export function DropdownMenuSubContent({ children }: { children: ReactNode }) {
 export function DropdownMenuRadioItem({
   value,
   label,
+  description,
 }: {
   value: string;
   label: string;
+  description?: string;
 }) {
   return (
-    <Menu.RadioItem value={value} className={cn(itemClass, "pl-7")}>
-      <Menu.ItemIndicator className="absolute left-2">
+    <Menu.RadioItem
+      value={value}
+      className={cn(itemClass, "relative pl-7", description && "items-start")}
+    >
+      <Menu.ItemIndicator
+        className={cn("absolute left-2", description && "top-2")}
+      >
         <Check className="h-4 w-4" />
       </Menu.ItemIndicator>
-      {label}
+      {description ? (
+        <span className="flex max-w-64 flex-col gap-0.5">
+          <span className="font-medium">{label}</span>
+          <span className="text-xs text-muted-foreground">{description}</span>
+        </span>
+      ) : (
+        label
+      )}
     </Menu.RadioItem>
+  );
+}
+
+export function DropdownMenuLabel({ label }: { label: string }) {
+  return (
+    <Menu.Label className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+      {label}
+    </Menu.Label>
   );
 }
 

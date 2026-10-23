@@ -42,7 +42,7 @@ import { createTurns } from "./turns.ts";
 
 export { systemOneProvider } from "@memo-air/decide";
 export type { Turn } from "./turns.ts";
-export { turnWebhook } from "./turns.ts";
+export { docText, turnWebhook } from "./turns.ts";
 
 export type LiveConnectionContext = {
   actor: LiveActor;
@@ -158,6 +158,7 @@ export function createLiveServer({
   decide = noOpinion,
   onTurn = null,
   onSpoken = null,
+  onStored = null,
   turnSettleMs,
   port,
   address,
@@ -177,6 +178,9 @@ export function createLiveServer({
   onTurn?: ((turn: Turn) => Promise<void>) | null;
   // A person's finished line in a call, for a host whose agents answer by voice.
   onSpoken?: ((turn: Turn) => Promise<void>) | null;
+  // After a doc's changes are saved (debounced), for a host that keeps a derived copy such as a
+  // search index. A failure is logged and never blocks the save.
+  onStored?: ((docName: string, document: Y.Doc) => Promise<void>) | null;
   turnSettleMs?: number;
   port: number;
   // Defaults to every interface; a host on a person's machine passes its loopback address.
@@ -464,6 +468,9 @@ export function createLiveServer({
       }
       await persistence.compactIfNeeded(documentName, document);
       await reconcileSuggestions(documentName, document, lastContext);
+      await onStored?.(documentName, document).catch((err) =>
+        logger.error({ err, docName: documentName }, "live: onStored failed")
+      );
     },
 
     async afterUnloadDocument({ documentName }) {

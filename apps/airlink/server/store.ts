@@ -10,6 +10,26 @@ export type Channel = {
   spaceDoc: string;
   // Open to everyone in the workspace, people and agents alike; every other channel is by invite.
   open: boolean;
+  replies: ChannelReplies;
+};
+
+// "auto": an agent answers what it is asked even unnamed; "tagged": only an @-mention gets one.
+export type ChannelReplies = "auto" | "tagged";
+
+export type SearchMessage = {
+  id: string;
+  author: string;
+  text: string;
+  atMs: number;
+};
+
+export type SearchHit = {
+  kind: string;
+  source: string;
+  part: number;
+  title: string;
+  atMs: number;
+  excerpt: string;
 };
 
 export type MemberKind = "human" | "agent";
@@ -29,6 +49,8 @@ export type RunnerRow = {
   docName: string;
   channel: Channel;
   title: string;
+  // The agent whose code this is: the script's room tools act as it, on every run.
+  agentId: string | null;
   language: RunnerLanguage;
   code: string;
   refreshMinutes: number;
@@ -70,12 +92,14 @@ const channelFromRow = (row: {
   chat_doc: string;
   space_doc: string;
   is_open: boolean;
+  replies: string;
 }): Channel => ({
   id: row.id,
   name: row.name,
   chatDoc: row.chat_doc,
   spaceDoc: row.space_doc,
   open: row.is_open,
+  replies: row.replies === "tagged" ? "tagged" : "auto",
 });
 
 const objectFromRow = (row: {
@@ -128,6 +152,7 @@ export function createStore(pool: pg.Pool) {
         bytes BYTEA NOT NULL
       );
       ALTER TABLE airlink_channels ADD COLUMN IF NOT EXISTS is_open BOOLEAN NOT NULL DEFAULT false;
+      ALTER TABLE airlink_channels ADD COLUMN IF NOT EXISTS replies TEXT NOT NULL DEFAULT 'auto';
       CREATE TABLE IF NOT EXISTS airlink_members (
         channel_id TEXT NOT NULL REFERENCES airlink_channels(id) ON DELETE CASCADE,
         kind TEXT NOT NULL CHECK (kind IN ('human', 'agent')),
@@ -167,6 +192,7 @@ export function createStore(pool: pg.Pool) {
         stderr TEXT NOT NULL DEFAULT ''
       );
       CREATE INDEX IF NOT EXISTS airlink_runs_doc ON airlink_runs (doc_name, id);
+      ALTER TABLE airlink_runners ADD COLUMN IF NOT EXISTS agent_id TEXT;
       CREATE TABLE IF NOT EXISTS airlink_run_files (
         doc_name TEXT NOT NULL REFERENCES airlink_objects(doc_name) ON DELETE CASCADE,
         name TEXT NOT NULL,
@@ -174,6 +200,20 @@ export function createStore(pool: pg.Pool) {
         bytes BYTEA NOT NULL,
         PRIMARY KEY (doc_name, name)
       );
+      CREATE TABLE IF NOT EXISTS airlink_search_chunks (
+        channel_id TEXT NOT NULL REFERENCES airlink_channels(id) ON DELETE CASCADE,
+        source TEXT NOT NULL,
+        part INTEGER NOT NULL,
+        kind TEXT NOT NULL,
+        object_doc TEXT REFERENCES airlink_objects(doc_name) ON DELETE CASCADE,
+        title TEXT NOT NULL,
+        body TEXT NOT NULL,
+        at TIMESTAMPTZ NOT NULL,
+        tsv TSVECTOR GENERATED ALWAYS AS (to_tsvector('english', title || ' ' || body)) STORED,
+        PRIMARY KEY (source, part)
+      );
+      CREATE INDEX IF NOT EXISTS airlink_search_chunks_tsv ON airlink_search_chunks USING GIN (tsv);
+      CREATE INDEX IF NOT EXISTS airlink_search_chunks_channel ON airlink_search_chunks (channel_id, kind, at);
     `);
     });
     const { rowCount } = await pool.query(
@@ -208,7 +248,7 @@ export function createStore(pool: pg.Pool) {
     const { rows } = await pool.query(
       `INSERT INTO airlink_channels (id, name, chat_doc, space_doc, created_by, is_open)
        VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (name) DO NOTHING
-       RETURNING id, name, chat_doc, space_doc, is_open`,
+       RETURNING id, name, chat_doc, space_doc, is_open, replies`,
       [id, name, `airlink-${id}-chat`, `airlink-${id}-space`, createdBy, open]
     );
     const created = rows[0] ? channelFromRow(rows[0]) : null;
@@ -384,16 +424,113 @@ export function createStore(pool: pg.Pool) {
   const listChannels = async (): Promise<Channel[]> =>
     (
       await pool.query(
-        "SELECT id, name, chat_doc, space_doc, is_open FROM airlink_channels ORDER BY created_at"
+        "SELECT id, name, chat_doc, space_doc, is_open, replies FROM airlink_channels ORDER BY created_at"
       )
     ).rows.map(channelFromRow);
 
   const channel = async (id: string): Promise<Channel | null> => {
     const { rows } = await pool.query(
-      "SELECT id, name, chat_doc, space_doc, is_open FROM airlink_channels WHERE id = $1",
+      "SELECT id, name, chat_doc, space_doc, is_open, replies FROM airlink_channels WHERE id = $1",
       [id]
     );
     return rows[0] ? channelFromRow(rows[0]) : null;
+  };
+
+  const setReplies = async (id: string, replies: ChannelReplies) => {
+    await pool.query("UPDATE airlink_channels SET replies = $2 WHERE id = $1", [
+      id,
+      replies,
+    ]);
+  };
+
+  // The search index is derived: messages and object text, rebuilt from the docs at any time.
+  // Messages upsert, so a streamed reply indexed half-written is completed by the next save.
+  const indexMessages = async (
+    channelId: string,
+    messages: SearchMessage[]
+  ) => {
+    if (messages.length === 0) {
+      return;
+    }
+    await pool.query(
+      `INSERT INTO airlink_search_chunks (channel_id, source, part, kind, title, body, at)
+       SELECT $1, id, 0, 'message', author, body, to_timestamp(ms / 1000.0)
+       FROM unnest($2::text[], $3::text[], $4::text[], $5::float8[]) AS m(id, author, body, ms)
+       ON CONFLICT (source, part) DO UPDATE SET title = EXCLUDED.title, body = EXCLUDED.body`,
+      [
+        channelId,
+        messages.map((message) => message.id),
+        messages.map((message) => message.author),
+        messages.map((message) => message.text),
+        messages.map((message) => message.atMs),
+      ]
+    );
+  };
+
+  // An object's parts are replaced whole, one writer at a time per object; one deleted meanwhile
+  // fails its foreign key and is simply not indexed.
+  const indexObject = async (
+    object: ChannelObject,
+    parts: string[]
+  ): Promise<void> => {
+    await transaction(async (client) => {
+      await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [
+        object.docName,
+      ]);
+      await client.query(
+        "DELETE FROM airlink_search_chunks WHERE source = $1",
+        [object.docName]
+      );
+      if (parts.length > 0) {
+        await client.query(
+          `INSERT INTO airlink_search_chunks (channel_id, source, part, kind, object_doc, title, body, at)
+           SELECT $1, $2, ord - 1, $3, $2, $4, body, now()
+           FROM unnest($5::text[]) WITH ORDINALITY AS p(body, ord)`,
+          [object.channelId, object.docName, object.kind, object.title, parts]
+        );
+      }
+    });
+  };
+
+  const isIndexed = async (source: string): Promise<boolean> =>
+    ((
+      await pool.query(
+        "SELECT 1 FROM airlink_search_chunks WHERE source = $1 LIMIT 1",
+        [source]
+      )
+    ).rowCount ?? 0) > 0;
+
+  // Any word may match, and chunks matching more words rank first; stemming lets "payments" find
+  // "payment". Only letters and digits reach to_tsquery.
+  const search = async (
+    channelId: string,
+    query: string,
+    { kinds, limit }: { kinds: string[] | null; limit: number }
+  ): Promise<SearchHit[]> => {
+    const words = (query.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []).slice(
+      0,
+      16
+    );
+    if (words.length === 0) {
+      return [];
+    }
+    const { rows } = await pool.query(
+      `SELECT kind, source, part, title, extract(epoch FROM at) * 1000 AS ms,
+              ts_headline('english', body, q, 'MaxWords=45, MinWords=15, MaxFragments=2, StartSel=**, StopSel=**') AS excerpt
+       FROM airlink_search_chunks, to_tsquery('english', $2) AS q
+       WHERE channel_id = $1 AND tsv @@ q AND ($3::text[] IS NULL OR kind = ANY($3))
+       ORDER BY ts_rank_cd(tsv, q) DESC, at DESC
+       LIMIT $4`,
+      [channelId, words.join(" | "), kinds, limit]
+    );
+    return rows.map((row) => ({
+      kind: row.kind,
+      source: row.source,
+      part: row.part,
+      title: row.title,
+      atMs: Number(row.ms),
+      excerpt: row.excerpt,
+    }));
   };
 
   const objects = async (channelId: string): Promise<ChannelObject[]> =>
@@ -585,8 +722,8 @@ export function createStore(pool: pg.Pool) {
         [object.docName, input.channelId, input.title, input.createdBy]
       );
       await client.query(
-        "INSERT INTO airlink_runners (doc_name, language, code) VALUES ($1, $2, $3)",
-        [object.docName, input.language, input.code]
+        "INSERT INTO airlink_runners (doc_name, language, code, agent_id) VALUES ($1, $2, $3, $4)",
+        [object.docName, input.language, input.code, input.createdBy]
       );
     });
     return object;
@@ -594,7 +731,12 @@ export function createStore(pool: pg.Pool) {
 
   const updateRunner = async (
     docName: string,
-    input: { title: string; language: RunnerLanguage; code: string }
+    input: {
+      title: string;
+      language: RunnerLanguage;
+      code: string;
+      agentId?: string;
+    }
   ) => {
     await transaction(async (client) => {
       await client.query(
@@ -602,16 +744,16 @@ export function createStore(pool: pg.Pool) {
         [docName, input.title]
       );
       await client.query(
-        "UPDATE airlink_runners SET language = $2, code = $3 WHERE doc_name = $1",
-        [docName, input.language, input.code]
+        "UPDATE airlink_runners SET language = $2, code = $3, agent_id = coalesce($4, agent_id) WHERE doc_name = $1",
+        [docName, input.language, input.code, input.agentId ?? null]
       );
     });
   };
 
   const runner = async (docName: string): Promise<RunnerRow | null> => {
     const { rows } = await pool.query(
-      `SELECT r.doc_name, r.language, r.code, r.refresh_minutes, r.paused, r.failures, o.title,
-              c.id, c.name, c.chat_doc, c.space_doc, c.is_open
+      `SELECT r.doc_name, r.language, r.code, r.refresh_minutes, r.paused, r.failures, r.agent_id, o.title,
+              c.id, c.name, c.chat_doc, c.space_doc, c.is_open, c.replies
        FROM airlink_runners r
        JOIN airlink_objects o ON o.doc_name = r.doc_name
        JOIN airlink_channels c ON c.id = o.channel_id
@@ -624,6 +766,7 @@ export function createStore(pool: pg.Pool) {
           docName: row.doc_name,
           channel: channelFromRow(row),
           title: row.title,
+          agentId: row.agent_id,
           language: row.language === "node" ? "node" : "python",
           code: row.code,
           refreshMinutes: row.refresh_minutes,
@@ -774,7 +917,7 @@ export function createStore(pool: pg.Pool) {
   // or one of its objects has no token at all.
   const docOf = async (docName: string): Promise<ChannelDoc | null> => {
     const { rows } = await pool.query(
-      `SELECT c.id, c.name, c.chat_doc, c.space_doc, c.is_open,
+      `SELECT c.id, c.name, c.chat_doc, c.space_doc, c.is_open, c.replies,
               o.doc_name, o.channel_id, o.kind, o.title
        FROM airlink_channels c
        LEFT JOIN airlink_objects o ON o.channel_id = c.id AND o.doc_name = $1
@@ -802,6 +945,11 @@ export function createStore(pool: pg.Pool) {
     rememberPeople,
     listPeople,
     createChannel,
+    setReplies,
+    indexMessages,
+    indexObject,
+    isIndexed,
+    search,
     addMembers,
     removeMember,
     membersOf,

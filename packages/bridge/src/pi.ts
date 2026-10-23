@@ -45,9 +45,11 @@ const toPiTool = (tool: BridgeTool): AgentTool => ({
 // per agent and channel keeps the conversation across turns.
 // A host that rebuilds harnesses when settings change passes the same `sessions` each time, so a
 // model or key change keeps every conversation.
-// ponytail: sessions live in memory and start over on restart; what an agent keeps is in its
-// memory folder, and a replay of the channel's recent messages is the upgrade.
+// Sessions live in memory and start over on restart or once they pass maxSessionMessages: every
+// turn's prompt carries the channel's latest messages, and search_room and read_chat reach the
+// rest, so a fresh session loses nothing durable and a long one never piles up stale context.
 export type PiSessions = Map<string, Agent>;
+const maxSessionMessages = 60;
 
 export function piHarness({
   model,
@@ -60,17 +62,19 @@ export function piHarness({
 }): Harness {
   return {
     async run({ sessionKey, agent, prompt, tools }) {
+      const kept = sessions.get(sessionKey);
       const session =
-        sessions.get(sessionKey) ??
-        new Agent({
-          initialState: {
-            systemPrompt: agentSystemPrompt(agent, {
-              memory: tools.some((tool) => tool.name === "remember"),
-            }),
-            model,
-          },
-          streamFn,
-        });
+        kept && kept.state.messages.length <= maxSessionMessages
+          ? kept
+          : new Agent({
+              initialState: {
+                systemPrompt: agentSystemPrompt(agent, {
+                  memory: tools.some((tool) => tool.name === "remember"),
+                }),
+                model,
+              },
+              streamFn,
+            });
       sessions.set(sessionKey, session);
       session.state.model = model;
       session.streamFunction = streamFn;

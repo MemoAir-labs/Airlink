@@ -267,6 +267,18 @@ export function readMessages(
   return limit === undefined ? messages : messages.slice(-limit);
 }
 
+// The last `count` messages in the order they arrived, not by their timestamps: a post is pushed
+// onto the end of the array, so this finds new messages whatever the poster's clock said.
+export function readLastAdded(doc: Y.Doc, count: number): ChatMessage[] {
+  const messages = chatMessages(doc);
+  return messages
+    .slice(Math.max(0, messages.length - count))
+    .flatMap((message) => {
+      const read = readMessage(message);
+      return read ? [read] : [];
+    });
+}
+
 // Calls back once per message added to the doc after this point, with the transaction's origin,
 // so a host can treat a person's post as an event the moment it lands; edits, reactions and
 // streamed text are not new messages.

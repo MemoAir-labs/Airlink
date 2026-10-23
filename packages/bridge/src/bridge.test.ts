@@ -38,6 +38,7 @@ type Call = {
 };
 
 const calls: Call[] = [];
+let chatLog: unknown[] = [];
 let server: Server;
 let liveUrl = "";
 
@@ -81,6 +82,12 @@ beforeAll(async () => {
       if (parsed?.ops?.[0]?.type === "typing") {
         res.setHeader("content-type", "application/json");
         res.end(JSON.stringify({ results: [{ ok: true, id: "" }] }));
+        return;
+      }
+      // Every turn reads the latest messages; that read is context, not what a test asserts.
+      if (match[2] === "chat") {
+        res.setHeader("content-type", "application/json");
+        res.end(JSON.stringify({ messages: chatLog }));
         return;
       }
       calls.push({
@@ -490,6 +497,88 @@ describe("createBridge with Pi", () => {
     expect(results[1]).toContain("Acme renews in March");
   });
 
+  it("starts a turn from the channel's latest messages and finds older ones by search", async () => {
+    const said = (id: string, name: string, text: string, ts: number) => ({
+      id,
+      actor: { kind: "human", id: name.toLowerCase(), name },
+      text,
+      mentions: [],
+      attachments: [],
+      ts,
+      reactions: {},
+    });
+    chatLog = [
+      said("m0", "Lin", "Acme wants net 45 on invoices", 1),
+      ...Array.from({ length: 6 }, (_, i) =>
+        said(`r${i}`, "Lin", `chatter ${i}`, 10 + i)
+      ),
+      said("m1", "Hana", "@Pi what terms did Acme want?", 20),
+    ];
+    const contexts: string[] = [];
+    const searched: string[] = [];
+    const faux = createFauxCore({});
+    const record = (context: { messages: { content: unknown }[] }) =>
+      contexts.push(JSON.stringify(context.messages.at(-1)?.content));
+    faux.setResponses([
+      (context) => {
+        record(context);
+        return fauxAssistantMessage(
+          fauxToolCall("search_room", { query: "acme terms" }),
+          { stopReason: "toolUse" }
+        );
+      },
+      (context) => {
+        record(context);
+        return fauxAssistantMessage(
+          fauxToolCall("read_chat", { around_id: "m0", limit: 2 }),
+          { stopReason: "toolUse" }
+        );
+      },
+      (context) => {
+        record(context);
+        return fauxAssistantMessage(fauxText("Net 45."));
+      },
+    ]);
+    const bridge = createBridge({
+      liveUrl,
+      jwtSecret,
+      agents: [agent({})],
+      decide: noOpinion,
+      harnesses: {
+        pi: piHarness({ model: faux.getModel(), streamFn: faux.streamSimple }),
+      },
+      room: {
+        ...room,
+        searchRoom: async (_chatDoc, query) => {
+          searched.push(query);
+          return [
+            {
+              kind: "message",
+              source: "m0",
+              part: 0,
+              title: "Lin",
+              atMs: 1,
+              excerpt: "**Acme** wants net 45",
+            },
+          ];
+        },
+      },
+      logger,
+    });
+
+    await bridge.onTurn(messageTurn("@Pi what terms did Acme want?", ["pi"]));
+    chatLog = [];
+
+    expect(contexts[0]).toContain("[r5] Lin: chatter 5");
+    expect(contexts[0]).toContain("[r1] Lin: chatter 1");
+    expect(contexts[0]).not.toContain("chatter 0");
+    expect(contexts[0]).not.toContain("[m1]");
+    expect(searched).toEqual(["acme terms"]);
+    expect(contexts[1]).toContain("message m0 by Lin");
+    expect(contexts[2]).toContain("[m0] Lin: Acme wants net 45 on invoices");
+    expect(contexts[2]).toContain("[r0] Lin: chatter 0");
+  });
+
   it("leaves a message addressed only to a person to that person", async () => {
     calls.length = 0;
     const faux = createFauxCore({});
@@ -517,6 +606,25 @@ describe("createBridge with Pi", () => {
         },
       },
     });
+    expect(calls).toEqual([]);
+  });
+
+  it("leaves an unnamed message unanswered in a channel whose agents answer only when tagged", async () => {
+    calls.length = 0;
+    const faux = createFauxCore({});
+    faux.setResponses([fauxAssistantMessage(fauxText("Hello!"))]);
+    const bridge = createBridge({
+      liveUrl,
+      jwtSecret,
+      agents: [agent({})],
+      decide: noOpinion,
+      harnesses: {
+        pi: piHarness({ model: faux.getModel(), streamFn: faux.streamSimple }),
+      },
+      room: { ...room, taggedOnly: async () => true },
+      logger,
+    });
+    await bridge.onTurn(messageTurn("hi"));
     expect(calls).toEqual([]);
   });
 
@@ -903,7 +1011,7 @@ describe("tool schemas", () => {
     });
     await bridge.onTurn(messageTurn("@Pi hi", ["pi"]));
     const all = JSON.stringify(served.map((tool) => tool.parameters));
-    expect(served).toHaveLength(20);
+    expect(served).toHaveLength(21);
     expect(all).not.toContain('"items":[');
     expect(all).not.toContain("$schema");
   });

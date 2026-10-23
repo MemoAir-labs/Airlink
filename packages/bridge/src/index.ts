@@ -2,6 +2,7 @@ import { resolve } from "node:path";
 import { createLiveAgentClient } from "@memo-air/agent";
 import type { AgentConfig } from "@memo-air/agents";
 import {
+  agentsNamedIn,
   rememberQuestion,
   rememberThreshold,
   routeMessage,
@@ -65,6 +66,16 @@ export type Harness = {
   close?(): void;
 };
 
+export type RoomSearchHit = {
+  kind: string;
+  // A message's id, or the object's doc name.
+  source: string;
+  part: number;
+  title: string;
+  atMs: number;
+  excerpt: string;
+};
+
 export type BridgeRoom = {
   // The channel's chat doc for any object placed in it (itself for the chat doc).
   chatDocOf(docName: string): Promise<string | null>;
@@ -79,6 +90,14 @@ export type BridgeRoom = {
   spaceDocOf?(chatDoc: string): Promise<string | null>;
   // The agents a channel has; null, or absent, when every agent is in every channel.
   agentIdsOf?(chatDoc: string): Promise<string[] | null>;
+  // True when the channel's agents answer only when named, never on the room's own judgment.
+  taggedOnly?(chatDoc: string): Promise<boolean>;
+  // Keyword search over the channel's messages and the text of its objects and uploads.
+  searchRoom?(
+    chatDoc: string,
+    query: string,
+    options: { kinds: string[] | null; limit: number }
+  ): Promise<RoomSearchHit[]>;
   // An uploaded file's contents as text, when the host keeps uploads.
   readFile?(docName: string): Promise<{ ok: boolean; text: string }>;
   // Runs agent-written code in a runner object (a new one when runnerId is null); a host that cannot run code leaves both out.
@@ -165,6 +184,59 @@ function windowOp(
       return { type: "bring_to_front", id: window.id };
   }
 }
+
+const searchKinds = [
+  "message",
+  "doc",
+  "sheet",
+  "slides",
+  "canvas",
+  "file",
+] as const;
+
+const searchRoomSchema = {
+  query: z
+    .string()
+    .trim()
+    .min(1)
+    .max(200)
+    .describe(
+      "Keywords. Any of them may match and passages matching more rank first, so list the words and synonyms the text would use."
+    ),
+  kinds: z
+    .array(z.enum(searchKinds))
+    .optional()
+    .describe("Only these kinds; leave out to search everything."),
+  limit: z.number().int().min(1).max(20).optional(),
+};
+
+const readChatSchema = {
+  around_id: z
+    .string()
+    .optional()
+    .describe("A message id: read the messages around it."),
+  before_id: z
+    .string()
+    .optional()
+    .describe("A message id: read the messages just before it, to page back."),
+  limit: z.number().int().min(1).max(30).optional(),
+};
+
+const recentMessages = 5;
+const notInScripts = new Set(["run_code", "schedule_runner"]);
+const messageChars = 800;
+const triggerSchema = z.object({ messageId: z.string() });
+
+const messageLine = (message: {
+  id: string;
+  actor: { kind: string; name: string };
+  text: string;
+}) =>
+  `[${message.id}] ${message.actor.name}${message.actor.kind === "agent" ? " (agent)" : ""}: ${
+    message.text.length > messageChars
+      ? `${message.text.slice(0, messageChars)}…`
+      : message.text
+  }`;
 
 const readFileSchema = {
   doc_id: z.string().describe("The file's id from the room's list."),
@@ -326,7 +398,92 @@ export function createBridge({
     ...windowToolsFor(agent, workspaceId, chatDoc),
     ...fileToolsFor(chatDoc),
     ...runnerToolsFor(agent, chatDoc),
+    ...historyToolsFor(agent, workspaceId, chatDoc),
   ];
+
+  // The prompt carries only the latest messages; everything older, and every object's text, is
+  // found here on demand rather than replayed into every turn.
+  const historyToolsFor = (
+    agent: AgentConfig,
+    workspaceId: string,
+    chatDoc: string
+  ): BridgeTool[] => {
+    const { searchRoom } = room;
+    const readChat: BridgeTool = {
+      name: "read_chat",
+      description:
+        "Read this channel's messages in order: around a message id (from a search hit or the recent messages), or just before one to page back. Without an id, the latest.",
+      parameters: jsonParameters(readChatSchema),
+      run: async (args) => {
+        const parsed = z.object(readChatSchema).safeParse(args);
+        if (!parsed.success) {
+          return { ok: false, text: parsed.error.message };
+        }
+        const { around_id, before_id, limit = 20 } = parsed.data;
+        // ponytail: reads the whole chat per call; page on the server once channels hold years.
+        const { messages } = await clientFor(
+          agent,
+          workspaceId,
+          chatDoc,
+          "read"
+        ).readChat();
+        const anchor = around_id ?? before_id;
+        const at = anchor
+          ? messages.findIndex((message) => message.id === anchor)
+          : messages.length;
+        if (at < 0) {
+          return { ok: false, text: `No message ${anchor} in this channel.` };
+        }
+        const start = around_id
+          ? Math.max(0, at - Math.floor(limit / 2))
+          : Math.max(0, at - limit);
+        const end = around_id ? Math.min(messages.length, start + limit) : at;
+        const page = messages.slice(start, end);
+        return {
+          ok: true,
+          text: page.length
+            ? [
+                ...(start > 0 ? [`(${start} earlier messages)`] : []),
+                ...page.map(messageLine),
+              ].join("\n")
+            : "No messages there.",
+        };
+      },
+    };
+    if (!searchRoom) {
+      return [readChat];
+    }
+    return [
+      readChat,
+      {
+        name: "search_room",
+        description:
+          "Search everything in this channel by keyword: its whole message history, and the text of its docs, sheets, slides, canvases and uploaded files (PDF, .xlsx, text). Returns the best passages with where they are. Search before saying you lack context, try other words if nothing fits, then open the source: read_chat around a message, read_live_file for a file, or the object's read tool for exact figures.",
+        parameters: jsonParameters(searchRoomSchema),
+        run: async (args) => {
+          const parsed = z.object(searchRoomSchema).safeParse(args);
+          if (!parsed.success) {
+            return { ok: false, text: parsed.error.message };
+          }
+          const hits = await searchRoom(chatDoc, parsed.data.query, {
+            kinds: parsed.data.kinds ?? null,
+            limit: parsed.data.limit ?? 10,
+          });
+          return {
+            ok: true,
+            text: hits.length
+              ? hits
+                  .map(
+                    (hit, index) =>
+                      `${index + 1}. ${hit.kind === "message" ? `message ${hit.source} by ${hit.title}` : `${hit.kind} "${hit.title}" (${hit.source}), part ${hit.part + 1}`}, ${new Date(hit.atMs).toISOString().slice(0, 16)}\n   ${hit.excerpt.replaceAll("\n", " ")}`
+                  )
+                  .join("\n")
+              : `Nothing in this channel matches "${parsed.data.query}". Try other words.`,
+          };
+        },
+      },
+    ];
+  };
 
   // Uploaded files live with the host, not in a live doc, so the host reads them.
   const fileToolsFor = (chatDoc: string): BridgeTool[] => {
@@ -378,7 +535,7 @@ export function createBridge({
       {
         name: "run_code",
         description:
-          "Run a Python 3 or Node 22 script in a runner window everyone in this channel sees. The channel's uploaded files are read-only in /files; write results to /out (the working directory): images, CSV, JSON, and an index.html, which becomes the runner's live dashboard and may load the other /out files by relative path. Python has pandas, numpy, matplotlib (save figures with savefig), requests and openpyxl; Node has its built-ins and fetch. The network is on. A run stops after 60 s; past 20 files or 50 MB, output is left out. You get the status, exit code, the end of stdout and stderr, and the files written: fix the script and call again with runner_id to re-run the same runner instead of making another. People see the code and output and can press Re-run, but cannot edit it.",
+          "Run a Python 3 or Node 22 script in a runner window everyone in this channel sees. The channel's uploaded files are read-only in /files; write results to /out (the working directory): images, CSV, JSON, and an index.html, which becomes the runner's live dashboard and may load the other /out files by relative path. Python has pandas, numpy, matplotlib (save figures with savefig), requests and openpyxl; Node has its built-ins and fetch. The network is on. The script can also use this room's tools as you: in Python `from room import room`, in Node `import { room } from './room.mjs'` (then await each call), and call any of your tools by name with the same arguments, e.g. room.search_room(query='acme terms') or room.read_live_sheet(...); each returns the tool's text, and a failed call raises. Do the searching, reading, filtering and writing in one script instead of calling tools one at a time, and print only what you need back. Up to 50 calls a run; run_code and schedule_runner are not available inside. A scheduled refresh calls them again, so a dashboard can pull live room data each time. A run stops after 60 s; past 20 files or 50 MB, output is left out. You get the status, exit code, the end of stdout and stderr, and the files written: fix the script and call again with runner_id to re-run the same runner instead of making another. People see the code and output and can press Re-run, but cannot edit it.",
         parameters: jsonParameters(runCodeSchema),
         run: async (args) => {
           const parsed = z.object(runCodeSchema).safeParse(args);
@@ -587,7 +744,25 @@ export function createBridge({
       turn.docName === chatDoc
         ? undefined
         : objects.find((candidate) => candidate.id === turn.docName);
+    const trigger = triggerSchema.safeParse(turn.event.payload);
+    const recent = await clientFor(agent, workspaceId, chatDoc, "read")
+      .readChat({ limit: recentMessages + 1 })
+      .then(({ messages }) =>
+        messages
+          .filter(
+            (message) =>
+              !trigger.success || message.id !== trigger.data.messageId
+          )
+          .slice(-recentMessages)
+      )
+      .catch((err) => {
+        logger.error({ err, chatDoc }, "bridge: recent messages failed");
+        return [];
+      });
     const prompt = [
+      recent.length
+        ? `The channel's latest messages, oldest first. Older history and everything in the room's objects and files: search_room, read_chat.\n${recent.map(messageLine).join("\n")}`
+        : null,
       turnPrompt({ event: turn.event, object, unsure }),
       objects.length
         ? `Live objects in this room:\n${objects
@@ -597,7 +772,9 @@ export function createBridge({
             )
             .join("\n")}`
         : "This room has no live objects yet.",
-    ].join("\n\n");
+    ]
+      .filter((part) => part !== null)
+      .join("\n\n");
     const stopTyping = startTyping(agent, workspaceId, chatDoc);
     try {
       const reply = await harness.run({
@@ -696,6 +873,40 @@ export function createBridge({
       return result;
     },
 
+    // A tool call from the agent's own script, run as that agent in that channel; a script cannot
+    // start or schedule another run.
+    async callTool({
+      agentId,
+      chatDoc,
+      workspaceId,
+      name,
+      args,
+    }: {
+      agentId: string;
+      chatDoc: string;
+      workspaceId: string;
+      name: string;
+      args: unknown;
+    }): Promise<{ ok: boolean; text: string }> {
+      const agent = byId.get(agentId);
+      const members = (await room.agentIdsOf?.(chatDoc)) ?? null;
+      if (!agent || (members && !members.includes(agent.id))) {
+        return {
+          ok: false,
+          text: "The agent that wrote this script is no longer in this channel.",
+        };
+      }
+      if (notInScripts.has(name)) {
+        return { ok: false, text: `${name} is not available inside a script.` };
+      }
+      const tool = toolsFor(agent, workspaceId, chatDoc).find(
+        (each) => each.name === name
+      );
+      return tool
+        ? tool.run(args)
+        : { ok: false, text: `There is no tool called ${name}.` };
+    },
+
     async onTurn(turn: BridgeTurn): Promise<void> {
       const workspaceId = turn.workspaceId ?? "airlink";
       const chatDoc = await room.chatDocOf(turn.docName);
@@ -721,11 +932,12 @@ export function createBridge({
       const inRoom = memberIds
         ? agents.filter((agent) => memberIds.includes(agent.id))
         : agents;
+      const taggedOnly = (await room.taggedOnly?.(chatDoc)) ?? false;
       // People mostly talk to each other in a call; an agent answers only when named or clearly meant.
       if (turn.event.type === spokenEventType) {
-        const agentIds = await routeSpoken(turn.event.summary, inRoom, {
-          decide,
-        });
+        const agentIds = taggedOnly
+          ? agentsNamedIn(turn.event.summary, inRoom).map((agent) => agent.id)
+          : await routeSpoken(turn.event.summary, inRoom, { decide });
         logger.info(
           { docName: turn.docName, route: "spoken", agentIds },
           "bridge: turn routed"
@@ -745,6 +957,13 @@ export function createBridge({
                 ]
               : [];
           })
+        );
+        return;
+      }
+      if (taggedOnly && !mentions.some((mention) => mention.kind === "agent")) {
+        logger.info(
+          { docName: turn.docName, route: "tagged-only", agentIds: [] },
+          "bridge: turn routed"
         );
         return;
       }

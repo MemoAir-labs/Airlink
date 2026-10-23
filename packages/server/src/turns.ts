@@ -52,6 +52,48 @@ const maxSummaryChars = 2000;
 
 // People comment by writing the doc, so open threads ride along with the text; a `comment` event
 // names the thread an agent route touched, which comes first.
+const textKeys = /^(text|title|label|body|notes|content|name|caption)$/i;
+
+// The words a person wrote in a view's fields, never its ids, colours or geometry.
+const wordsIn = (value: unknown, key = ""): string[] =>
+  typeof value === "string"
+    ? textKeys.test(key) && value.trim()
+      ? [value.trim()]
+      : []
+    : Array.isArray(value)
+      ? value.flatMap((item) => wordsIn(item, key))
+      : value && typeof value === "object"
+        ? Object.entries(value).flatMap(([k, v]) => wordsIn(v, k))
+        : [];
+
+// What a live object says, as plain text for a search index. A `--- <place> ---` line marks where
+// each part is, so a hit can name the slide or row range to open.
+export function docText(document: Y.Doc): string {
+  switch (kindOf(document)) {
+    case "doc":
+      return exportMarkdown(docFragment(document));
+    case "sheet":
+      return readGrid(document)
+        .inputs.flatMap((row, index) =>
+          row.some((cell) => cell.trim())
+            ? [`Row ${index + 1}: ${row.join("\t")}`]
+            : []
+        )
+        .join("\n");
+    case "slides":
+      return readDeck(document)
+        .slides.map(
+          (slide, index) =>
+            `--- Slide ${index + 1} ---\n${[...new Set(wordsIn(slide))].join("\n")}`
+        )
+        .join("\n\n");
+    case "canvas":
+      return wordsIn(readCanvas(document)).join("\n");
+    default:
+      return "";
+  }
+}
+
 function summarize(document: Y.Doc, payload: Record<string, unknown>): string {
   switch (kindOf(document)) {
     case "doc": {

@@ -165,6 +165,58 @@ describe("controlClient", () => {
       server.close();
     }
   });
+
+  it("answers each tool call a run streams, then returns the run's result", async () => {
+    const posted: unknown[] = [];
+    let finish: (text: string) => void = () => {};
+    const server = createServer((request, response) => {
+      let body = "";
+      request.on("data", (chunk) => {
+        body += chunk;
+      });
+      request.on("end", () => {
+        if (request.url === "/tool-result") {
+          posted.push(JSON.parse(body));
+          response.end("{}");
+          finish(JSON.parse(body).text);
+          return;
+        }
+        expect(JSON.parse(body).tools).toBe(true);
+        response.writeHead(200, { "content-type": "application/x-ndjson" });
+        response.write(
+          `${JSON.stringify({ type: "tool", id: "c1", name: "search_room", args: { query: "acme" } })}\n`
+        );
+        finish = (text) =>
+          response.end(
+            `${JSON.stringify({ type: "result", ...answer({ stdout: text }) })}\n`
+          );
+      });
+    });
+    await new Promise<void>((resolve) =>
+      server.listen(0, "127.0.0.1", resolve)
+    );
+    const address = server.address();
+    const port = typeof address === "object" && address ? address.port : 0;
+    const asked: unknown[] = [];
+    try {
+      expect(
+        await controlClient({
+          controlUrl: `http://127.0.0.1:${port}`,
+          token: "t",
+        }).run(
+          { language: "python", code: "x", files: [], timeoutMs: 1000 },
+          async (name, args) => {
+            asked.push({ name, args });
+            return { ok: true, text: "net 45" };
+          }
+        )
+      ).toEqual(answer({ stdout: "net 45" }));
+      expect(asked).toEqual([{ name: "search_room", args: { query: "acme" } }]);
+      expect(posted).toEqual([{ id: "c1", ok: true, text: "net 45" }]);
+    } finally {
+      server.close();
+    }
+  });
 });
 
 describe.skipIf(!databaseUrl)("airlink runners", () => {
@@ -214,6 +266,7 @@ describe.skipIf(!databaseUrl)("airlink runners", () => {
       models: () => [],
       memoryOf: (agent) => agentMemory(join(dataDir, "memory"), agent),
       chatWriters: async () => [],
+      indexFile: async () => {},
       transcribeToken: async () => null,
       untouched: async () => false,
       onConfigChanged: () => undefined,

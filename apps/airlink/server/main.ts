@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { extname, join, normalize } from "node:path";
 import { createLiveAgentClient } from "@memo-air/agent";
-import { routeSpoken } from "@memo-air/agents";
+import { agentsNamedIn, routeSpoken } from "@memo-air/agents";
 import type { Bridge } from "@memo-air/bridge";
 import {
   agentMemory,
@@ -31,11 +31,13 @@ import type { VoiceActor } from "@memo-air/voice";
 import { createVoice } from "@memo-air/voice";
 import pg from "pg";
 import pino from "pino";
+import type * as Y from "yjs";
 
 import { createApi } from "./api.ts";
 import { loadSecret, readConfig } from "./config.ts";
 import { createRoom, workspaceId } from "./room.ts";
 import { controlClient, createRunner, docStateWriter } from "./runner.ts";
+import { createSearchIndex } from "./search.ts";
 import {
   availableModels,
   closeKept,
@@ -61,6 +63,27 @@ const memoryRootOf = (settings: { memoryRoot: string }) =>
 const pool = new pg.Pool({ connectionString: config.databaseUrl });
 const store = createStore(pool);
 const predatingMembers = await store.init();
+
+// Reads a doc as the server, for work outside any person's connection.
+const readDoc = async <T>(
+  docName: string,
+  read: (document: Y.Doc) => T | Promise<T>
+): Promise<T> => {
+  const connection = await live.hocuspocus.openDirectConnection(docName, {
+    actor: { kind: "human", id: "airlink", name: "AirLink" },
+    access: "read",
+    workspaceId,
+  });
+  try {
+    if (!connection.document) {
+      throw new Error(`${docName} did not load`);
+    }
+    return await read(connection.document);
+  } finally {
+    await connection.disconnect();
+  }
+};
+const searchIndex = createSearchIndex({ store, readDoc });
 
 const browserProvider = config.browserCdpUrl
   ? cdpEndpointProvider({ url: config.browserCdpUrl })
@@ -92,6 +115,7 @@ const live = createLiveServer({
   decide: (input) => decide(input),
   onTurn: async (turn) => bridge?.onTurn(turn),
   onSpoken: async (turn) => bridge?.onTurn(turn),
+  onStored: (docName, document) => searchIndex.stored(docName, document),
   browserProvider,
   desktopProvider: config.e2bApiKey
     ? e2bDesktopProvider({ apiKey: config.e2bApiKey })
@@ -109,6 +133,9 @@ const live = createLiveServer({
   logger: logger.child({ part: "live" }),
 });
 const livePort = await live.listen();
+void searchIndex
+  .backfill()
+  .catch((err) => logger.error({ err }, "airlink: search backfill failed"));
 
 // Who has written in a channel, read from its chat: each person once, under the name and time of
 // their latest message, with how many they wrote.
@@ -196,10 +223,20 @@ const runner = createRunner({
   control: config.runner ? controlClient(config.runner) : null,
   writeState: docStateWriter(live.hocuspocus),
   postNote: postSystemNote,
+  callTool: async (input) =>
+    bridge
+      ? bridge.callTool({ ...input, workspaceId })
+      : { ok: false, text: "The agents are not ready yet." },
   logger: logger.child({ part: "runner" }),
 });
 await runner.start();
-const room = createRoom({ store, liveUrl, jwtSecret: secret, runner });
+const room = createRoom({
+  store,
+  liveUrl,
+  jwtSecret: secret,
+  runner,
+  searchIndex,
+});
 let detected = await detectHarnesses();
 
 const kept = keptHarnesses();
@@ -309,7 +346,10 @@ const voice =
               .agents()
               .filter((agent) => !ids || ids.includes(agent.id));
           },
-          route: (text, agents) => routeSpoken(text, agents, { decide }),
+          route: async (text, agents, callDoc) =>
+            (await room.taggedOnly?.(await chatDocOfCall(callDoc)))
+              ? agentsNamedIn(text, agents).map((agent) => agent.id)
+              : routeSpoken(text, agents, { decide }),
           work: async (agent, callDoc, task) =>
             bridge
               ? bridge.work({
@@ -362,6 +402,15 @@ const handleApi = createApi({
   models: () => availableModels(files.settings(), config.envApiKeys),
   memoryOf: (agent) => agentMemory(memoryRootOf(files.settings()), agent),
   chatWriters,
+  indexFile: (object) =>
+    searchIndex
+      .indexFile(object)
+      .catch((err) =>
+        logger.error(
+          { err, docName: object.docName },
+          "airlink: file index failed"
+        )
+      ),
   harnesses: async () => {
     detected = await detectHarnesses();
     return detected;

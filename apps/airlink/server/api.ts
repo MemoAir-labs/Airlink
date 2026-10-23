@@ -16,7 +16,13 @@ import {
 } from "./identity.ts";
 import { workspaceId } from "./room.ts";
 import type { PublicSettings } from "./settings.ts";
-import type { Channel, ChannelDoc, MemberKind, Store } from "./store.ts";
+import type {
+  Channel,
+  ChannelDoc,
+  ChannelObject,
+  MemberKind,
+  Store,
+} from "./store.ts";
 
 const objectKinds = [
   "doc",
@@ -53,6 +59,7 @@ const leaveSchema = z.object({ identity: z.string().min(1).max(200) });
 const mediaTokenSchema = z.object({ identity: z.string().min(1) });
 const deleteSchema = z.object({ ifUntouched: z.boolean().optional() });
 const pausedSchema = z.object({ paused: z.boolean() });
+const repliesSchema = z.object({ replies: z.enum(["auto", "tagged"]) });
 const runRoute = /^\/api\/runs\/([^/]+)(?:\/(run|paused)|\/out\/(.+))?$/;
 const runFrameRoute = /^\/api\/runs\/([^/]+)\/frame\/([^/]+)\/(.+)$/;
 const frameGrantSeconds = 12 * 60 * 60;
@@ -153,6 +160,7 @@ export type AirlinkApiDeps = {
   ) => Promise<
     { id: string; name: string; seenAtMs: number; messages: number }[]
   >;
+  indexFile: (object: ChannelObject) => Promise<void>;
   transcribeToken: () => Promise<{ token: string; baseUri: string } | null>;
   // True while nobody has written anything into the doc, counting edits not yet flushed.
   untouched: (docName: string) => Promise<boolean>;
@@ -709,6 +717,7 @@ export function createApi(deps: AirlinkApiDeps) {
         bytes: read.body,
         createdBy: person.id,
       });
+      void deps.indexFile(object);
       return { status: 200, body: { object } };
     }
     const fileMatch = path.match(/^\/api\/files\/([^/]+)(\/info)?$/);
@@ -801,7 +810,9 @@ export function createApi(deps: AirlinkApiDeps) {
       }
       return fail(405, "Method not allowed.");
     }
-    const channelMatch = path.match(/^\/api\/channels\/([^/]+)(\/objects)?$/);
+    const channelMatch = path.match(
+      /^\/api\/channels\/([^/]+)(\/objects|\/replies)?$/
+    );
     if (channelMatch) {
       const entered = await memberChannel(person, channelMatch[1]);
       if (!entered.ok) {
@@ -814,7 +825,15 @@ export function createApi(deps: AirlinkApiDeps) {
           body: { channel, objects: await store.objects(channel.id) },
         };
       }
-      if (channelMatch[2] && method === "POST") {
+      if (channelMatch[2] === "/replies" && method === "POST") {
+        const input = await readJson(request, repliesSchema);
+        if (!input.ok) {
+          return input.reply;
+        }
+        await store.setReplies(channel.id, input.data.replies);
+        return { status: 200, body: { ok: true } };
+      }
+      if (channelMatch[2] === "/objects" && method === "POST") {
         const input = await readJson(request, objectSchema);
         if (!input.ok) {
           return input.reply;

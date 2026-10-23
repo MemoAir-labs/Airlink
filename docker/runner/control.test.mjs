@@ -9,6 +9,7 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { createServer, request } from "node:http";
+import { createConnection } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, beforeEach, describe, it } from "node:test";
@@ -73,6 +74,76 @@ describe("runner control", () => {
   beforeEach(() => {
     calls.length = 0;
     script = quiet;
+  });
+
+  it("relays a jailed script's tool calls to AirLink on the open run and hands back the answers", async () => {
+    script = async (dir) => {
+      const reply = await new Promise((resolve, reject) => {
+        const conn = createConnection(join(dir, "room", "sock"));
+        let data = "";
+        conn.setEncoding("utf8");
+        conn.on("data", (chunk) => {
+          data += chunk;
+        });
+        conn.on("end", () => resolve(JSON.parse(data)));
+        conn.on("error", reject);
+        conn.write(
+          `${JSON.stringify({ name: "search_room", args: { query: "acme" } })}\n`
+        );
+      });
+      const helpers = await readdir(join(dir, "code"));
+      return {
+        exitCode: 0,
+        timedOut: false,
+        stdout: JSON.stringify({ reply, helpers }),
+        stderr: "",
+      };
+    };
+    const response = await run({ ...valid, tools: true });
+    assert.equal(response.headers.get("content-type"), "application/x-ndjson");
+    const lines = [];
+    let pending = "";
+    for await (const chunk of response.body.pipeThrough(
+      new TextDecoderStream()
+    )) {
+      pending += chunk;
+      const parts = pending.split("\n");
+      pending = parts.pop();
+      for (const part of parts) {
+        const line = JSON.parse(part);
+        lines.push(line);
+        if (line.type === "tool") {
+          const posted = await fetch(`${base}/tool-result`, {
+            method: "POST",
+            headers: { "x-runner-token": "secret" },
+            body: JSON.stringify({ id: line.id, ok: true, text: "net 45" }),
+          });
+          assert.equal(posted.status, 200);
+        }
+      }
+    }
+    assert.deepEqual(
+      lines.map((line) => line.type),
+      ["tool", "result"]
+    );
+    assert.deepEqual(
+      { name: lines[0].name, args: lines[0].args },
+      { name: "search_room", args: { query: "acme" } }
+    );
+    assert.deepEqual(JSON.parse(lines[1].stdout), {
+      reply: { ok: true, text: "net 45" },
+      helpers: ["main.py", "room.mjs", "room.py"],
+    });
+    const [{ args, dir }] = calls;
+    assert.deepEqual(args, jailArgv({ dir, language: "python", tools: true }));
+    assert.ok(args.join(" ").includes(`--bind ${join(dir, "room")} /room`));
+    const stray = await fetch(`${base}/tool-result`, {
+      method: "POST",
+      headers: { "x-runner-token": "secret" },
+      body: JSON.stringify({ id: lines[0].id, ok: true, text: "late" }),
+    });
+    assert.equal(stray.status, 404);
+    assert.deepEqual(await readdir(workDir), []);
   });
 
   it("rejects a missing or wrong token before running anything", async () => {

@@ -74,6 +74,7 @@ describe.skipIf(!databaseUrl)("airlink server", () => {
       models: () => [],
       memoryOf: (agent) => agentMemory(join(dataDir, "memory"), agent),
       chatWriters: async () => [],
+      indexFile: async () => {},
       transcribeToken: async () => null,
       untouched: async (docName) => {
         const connection = await live.hocuspocus.openDirectConnection(docName, {
@@ -558,5 +559,48 @@ describe.skipIf(!databaseUrl)("airlink server", () => {
     );
     expect(claims.filter((claimed) => !claimed.existing)).toHaveLength(1);
     expect(await store.objects(channel.id)).toHaveLength(1);
+  });
+
+  it("finds a channel's messages and object text by any keyword, and forgets an object deleted", async () => {
+    const channel = await newChannel();
+    await store.indexMessages(channel.id, [
+      {
+        id: `${channel.id}-m1`,
+        author: "Lin",
+        text: "Acme invoices are due net 45",
+        atMs: 1_000,
+      },
+      {
+        id: `${channel.id}-m2`,
+        author: "Lin",
+        text: "lunch at noon",
+        atMs: 2_000,
+      },
+    ]);
+    const object = await store.addObject({
+      channelId: channel.id,
+      kind: "doc",
+      title: "Vendor terms",
+      createdBy: "agent",
+    });
+    await store.indexObject(object, ["Globex payments run monthly"]);
+
+    const hits = await store.search(channel.id, "payment invoices?!", {
+      kinds: null,
+      limit: 10,
+    });
+    expect(hits.map((hit) => [hit.kind, hit.source])).toEqual(
+      expect.arrayContaining([
+        ["message", `${channel.id}-m1`],
+        ["doc", object.docName],
+      ])
+    );
+    expect(hits).toHaveLength(2);
+    expect(
+      await store.search(channel.id, "invoices", { kinds: ["doc"], limit: 10 })
+    ).toEqual([]);
+
+    await store.deleteObject(channel.id, object.docName);
+    expect(await store.isIndexed(object.docName)).toBe(false);
   });
 });

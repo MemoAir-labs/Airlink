@@ -48,10 +48,26 @@ export type ControlRequest = {
   files: { name: string; contentBase64: string }[];
   timeoutMs: number;
 };
+export type ToolAnswer = { ok: boolean; text: string };
+// Answers a room tool call the script made from inside its jail.
+export type OnTool = (name: string, args: unknown) => Promise<ToolAnswer>;
 export type RunnerControl = {
-  run(request: ControlRequest): Promise<ControlResult>;
+  run(request: ControlRequest, onTool?: OnTool): Promise<ControlResult>;
   health(): Promise<boolean>;
 };
+
+export const maxToolCalls = 50;
+
+const streamLineSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("tool"),
+    id: z.string(),
+    name: z.string(),
+    args: z.unknown(),
+  }),
+  controlResultSchema.extend({ type: z.literal("result") }),
+  z.object({ type: z.literal("error"), error: z.string() }),
+]);
 
 export function controlClient({
   controlUrl,
@@ -74,8 +90,10 @@ export function controlClient({
         },
         () => false
       ),
-    run: async (request) => {
-      const body = JSON.stringify(request);
+    run: async (request, onTool) => {
+      const body = JSON.stringify(
+        onTool ? { ...request, tools: true } : request
+      );
       const post = () =>
         fetch(`${controlUrl}/run`, {
           method: "POST",
@@ -107,7 +125,50 @@ export function controlClient({
           `the runner answered ${response.status}: ${(await response.text()).slice(0, 200)}`
         );
       }
-      return controlResultSchema.parse(await response.json());
+      if (!onTool || !response.body) {
+        return controlResultSchema.parse(await response.json());
+      }
+      // A run with tools streams one JSON line per tool call and ends with its result; each call is
+      // answered on its own request while the run goes on, so a script may make calls in parallel.
+      const answer = async (id: string, name: string, args: unknown) => {
+        const reply = await onTool(name, args).catch((err) => ({
+          ok: false,
+          text: `The tool call failed: ${err instanceof Error ? err.message : String(err)}`,
+        }));
+        await fetch(`${controlUrl}/tool-result`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-runner-token": token,
+          },
+          body: JSON.stringify({ id, ...reply }),
+        })
+          .then((posted) => posted.body?.cancel())
+          .catch(() => undefined);
+      };
+      let pending = "";
+      for await (const chunk of response.body.pipeThrough(
+        new TextDecoderStream()
+      )) {
+        pending += chunk;
+        let end = pending.indexOf("\n");
+        while (end >= 0) {
+          const line = streamLineSchema.parse(
+            JSON.parse(pending.slice(0, end))
+          );
+          pending = pending.slice(end + 1);
+          end = pending.indexOf("\n");
+          if (line.type === "tool") {
+            void answer(line.id, line.name, line.args);
+          } else if (line.type === "error") {
+            throw new Error(line.error);
+          } else {
+            const { type: _type, ...result } = line;
+            return result;
+          }
+        }
+      }
+      throw new Error("the runner ended the run without a result");
     },
   };
 }
@@ -268,6 +329,7 @@ export function createRunner({
   control,
   writeState,
   postNote,
+  callTool = null,
   logger,
   after = (ms, run) => {
     const timer = setTimeout(run, ms);
@@ -278,6 +340,15 @@ export function createRunner({
   control: RunnerControl | null;
   writeState: (docName: string, patch: Partial<RunnerState>) => Promise<void>;
   postNote: (chatDoc: string, text: string) => Promise<void>;
+  // Runs one of the agent's room tools for its script; without it scripts have no room tools.
+  callTool?:
+    | ((input: {
+        agentId: string;
+        chatDoc: string;
+        name: string;
+        args: unknown;
+      }) => Promise<ToolAnswer>)
+    | null;
   logger: { error(obj: object, msg: string): void };
   after?: (ms: number, run: () => void) => () => void;
 }) {
@@ -362,12 +433,27 @@ export function createRunner({
       maxBytes: maxInputBytes,
     });
     const inputs = inputFiles(picked.files, picked.skipped, picked.media);
-    const result = await withControl.run({
-      language: row.language,
-      code: row.code,
-      files: inputs.files,
-      timeoutMs: runTimeoutMs,
-    });
+    const { agentId } = row;
+    let toolCalls = 0;
+    const onTool: OnTool | undefined =
+      callTool && agentId
+        ? async (name, args) =>
+            ++toolCalls > maxToolCalls
+              ? {
+                  ok: false,
+                  text: `A run makes at most ${maxToolCalls} tool calls.`,
+                }
+              : callTool({ agentId, chatDoc: row.channel.chatDoc, name, args })
+        : undefined;
+    const result = await withControl.run(
+      {
+        language: row.language,
+        code: row.code,
+        files: inputs.files,
+        timeoutMs: runTimeoutMs,
+      },
+      onTool
+    );
     return {
       status: result.timedOut
         ? "timeout"
