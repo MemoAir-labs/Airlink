@@ -45,13 +45,22 @@ export function createRoom({
       ),
     });
 
-  // A new runner joins the channel and is placed in its space like an agent's new sheet, then runs.
+  // A runner joins the channel at once but reaches its space only once it has something to show:
+  // a dashboard (index.html) or a refresh schedule. A one-off lookup stays off the desktop.
+  const placeRunner = async (
+    agent: AgentConfig,
+    spaceDoc: string,
+    docName: string,
+    title: string
+  ) =>
+    clientFor(agentActor(agent), spaceDoc).spaceOps({
+      ops: [{ type: "place", docName, kind: "runner", title }],
+    });
+
   const runnerTools = (
     runner: Runner
   ): Pick<BridgeRoom, "runCode" | "scheduleRunner"> => ({
     runCode: async ({ chatDoc, agent, language, code, title, runnerId }) => {
-      let created = false;
-      let placed = false;
       try {
         const found = await store.docOf(chatDoc);
         if (!found) {
@@ -92,30 +101,25 @@ export function createRoom({
               createdBy: agent.id,
             })
           ).docName;
-        if (!runnerId) {
-          created = true;
-          await clientFor(agentActor(agent), found.channel.spaceDoc).spaceOps({
-            ops: [{ type: "place", docName, kind: "runner", title }],
-          });
-          placed = true;
-        }
         const outcome = await runner.run(docName, agentActor(agent));
+        if (
+          outcome.ok &&
+          outcome.outputs.some((output) => output.name === "index.html")
+        ) {
+          await placeRunner(agent, found.channel.spaceDoc, docName, title);
+        }
         return {
           ok: outcome.ok && outcome.status === "ok",
           text: describeRun(outcome),
         };
       } catch (err) {
-        const reason = err instanceof Error ? err.message : String(err);
         return {
           ok: false,
-          text:
-            created && !placed
-              ? `The runner was created but not placed in the channel's space, and did not run: ${reason}`
-              : `The code could not be run: ${reason}`,
+          text: `The code could not be run: ${err instanceof Error ? err.message : String(err)}`,
         };
       }
     },
-    scheduleRunner: async ({ chatDoc, runnerId, refreshMinutes }) => {
+    scheduleRunner: async ({ chatDoc, agent, runnerId, refreshMinutes }) => {
       try {
         const found = await store.docOf(chatDoc);
         const row = await store.runner(runnerId);
@@ -123,6 +127,9 @@ export function createRoom({
           return { ok: false, text: `No runner ${runnerId} is in this room.` };
         }
         await runner.setRefresh(runnerId, refreshMinutes);
+        if (refreshMinutes) {
+          await placeRunner(agent, found.channel.spaceDoc, runnerId, row.title);
+        }
         return {
           ok: true,
           text: refreshMinutes

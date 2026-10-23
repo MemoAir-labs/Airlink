@@ -54,6 +54,8 @@ Set these in `apps/airlink/.env`. Every one has a default that matches `docker-c
 | `ANTHROPIC_API_KEY` | — | LLM key for Pi, the router and the talker. |
 | `OPENAI_API_KEY` | — | LLM key (with an OpenAI model in Settings); also a speech provider for huddles. |
 | `ELEVENLABS_API_KEY` | — | Speech for huddles and "Transcribe me" in every browser. |
+| `CARTESIA_API_KEY` | — | Speech for huddles. |
+| `DEEPGRAM_API_KEY` | — | Speech for huddles. |
 | `E2B_API_KEY` | — | Run desktops on E2B instead of Docker. |
 
 **Server.**

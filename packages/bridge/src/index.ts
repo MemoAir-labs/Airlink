@@ -333,7 +333,8 @@ export function createBridge({
     agent: AgentConfig,
     workspaceId: string,
     docName: string,
-    access: LiveAccess
+    access: LiveAccess,
+    via?: "script"
   ) =>
     createLiveAgentClient({
       baseUrl: liveUrl,
@@ -344,6 +345,7 @@ export function createBridge({
           workspaceId,
           docName,
           access: capAccess(access, agent),
+          ...(via ? { via } : {}),
         },
         jwtSecret
       ),
@@ -379,7 +381,8 @@ export function createBridge({
   const toolsFor = (
     agent: AgentConfig,
     workspaceId: string,
-    chatDoc: string
+    chatDoc: string,
+    via?: "script"
   ): BridgeTool[] => [
     ...offeredTools.map(
       (tool): BridgeTool => ({
@@ -394,7 +397,7 @@ export function createBridge({
           if (!parsed.ok) {
             return { ok: false, text: parsed.error };
           }
-          return runInRoom(agent, workspaceId, chatDoc, parsed.call);
+          return runInRoom(agent, workspaceId, chatDoc, parsed.call, via);
         },
       })
     ),
@@ -539,7 +542,7 @@ export function createBridge({
       {
         name: "run_code",
         description:
-          "Run a Python 3 or Node 22 script in a runner window everyone in this channel sees. The channel's uploaded files are read-only in /files; write results to /out (the working directory): images, CSV, JSON, and an index.html, which becomes the runner's live dashboard and may load the other /out files by relative path. Python has pandas, numpy, matplotlib (save figures with savefig), requests and openpyxl; Node has its built-ins and fetch. The network is on. The script can also use this room's tools as you: in Python `from room import room`, in Node `import { room } from './room.mjs'` (then await each call), and call any of your tools by name with the same arguments, e.g. room.search_room(query='acme terms') or room.read_live_sheet(...); each returns the tool's text, and a failed call raises. Do the searching, reading, filtering and writing in one script instead of calling tools one at a time, and print only what you need back. Up to 50 calls a run; run_code and schedule_runner are not available inside. A scheduled refresh calls them again, so a dashboard can pull live room data each time. A run stops after 60 s; past 20 files or 50 MB, output is left out. You get the status, exit code, the end of stdout and stderr, and the files written: fix the script and call again with runner_id to re-run the same runner instead of making another. People see the code and output and can press Re-run, but cannot edit it.",
+          "Run a Python 3 or Node 22 script in a runner. The channel's uploaded files are read-only in /files; write results to /out (the working directory): images, CSV, JSON, and an index.html, which becomes the runner's live dashboard, may load the other /out files by relative path, and puts the runner on the channel's desktop; a run that writes no index.html stays off the desktop, so a one-off lookup leaves no window behind. Python has pandas, numpy, matplotlib (save figures with savefig), requests and openpyxl; Node has its built-ins and fetch. The network is on. The script can also use this room's tools as you: in Python `from room import room`, in Node `import { room } from './room.mjs'` (then await each call), and call any of your tools by name with the same arguments, e.g. room.search_room(query='acme terms') or room.read_live_sheet(...); each returns the tool's text, and a failed call raises. Do the searching, reading, filtering and writing in one script instead of calling tools one at a time, and print only what you need back. Up to 50 calls a run; run_code and schedule_runner are not available inside. A scheduled refresh calls them again, so a dashboard can pull live room data each time. A run stops after 60 s; past 20 files or 50 MB, output is left out. You get the status, exit code, the end of stdout and stderr, and the files written: fix the script and call again with runner_id to re-run the same runner instead of making another. Once on the desktop, people see the code and output and can press Re-run, but cannot edit it.",
         parameters: jsonParameters(runCodeSchema),
         run: async (args) => {
           const parsed = z.object(runCodeSchema).safeParse(args);
@@ -566,7 +569,7 @@ export function createBridge({
       {
         name: "schedule_runner",
         description:
-          "Make a runner re-run on its own every refresh_minutes (0 turns it off), so its dashboard stays current. Runs never overlap; anyone in the channel can pause it; three failed refreshes in a row pause it and say so in the chat.",
+          "Make a runner re-run on its own every refresh_minutes (0 turns it off), so its dashboard stays current; a scheduled runner is put on the channel's desktop. Runs never overlap; anyone in the channel can pause it; three failed refreshes in a row pause it and say so in the chat.",
         parameters: jsonParameters(scheduleRunnerSchema),
         run: async (args) => {
           const parsed = z.object(scheduleRunnerSchema).safeParse(args);
@@ -673,7 +676,8 @@ export function createBridge({
     agent: AgentConfig,
     workspaceId: string,
     chatDoc: string,
-    call: RoomToolCall
+    call: RoomToolCall,
+    via?: "script"
   ) => {
     const object = (await room.objectsOf(chatDoc)).find(
       (candidate) => candidate.id === call.args.doc_id
@@ -686,7 +690,7 @@ export function createBridge({
       };
     }
     const result = await runRoomTool(
-      clientFor(agent, workspaceId, object.id, roomToolAccess(call)),
+      clientFor(agent, workspaceId, object.id, roomToolAccess(call), via),
       call,
       object
     );
@@ -942,7 +946,7 @@ export function createBridge({
       if (notInScripts.has(name)) {
         return { ok: false, text: `${name} is not available inside a script.` };
       }
-      const tool = toolsFor(agent, workspaceId, chatDoc).find(
+      const tool = toolsFor(agent, workspaceId, chatDoc, "script").find(
         (each) => each.name === name
       );
       return tool

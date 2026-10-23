@@ -4,10 +4,11 @@ import {
   Input,
   Markdown,
   Search,
+  Sparkles,
   TextArea,
   Trash03,
 } from "@memo-air/react/ui";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { z } from "zod";
 import { Avatar } from "./Avatar.tsx";
 import type { Agent, Person } from "./api.ts";
@@ -90,6 +91,10 @@ function AgentProfile({
   const models = useApi("/api/models", modelsSchema).data?.models ?? [];
   const voices = useApi("/api/voices", voicesSchema).data?.voices ?? [];
   const [previewing, setPreviewing] = useState(false);
+  const [isDrafting, setIsDrafting] = useState(false);
+  const [draftError, setDraftError] = useState<string | null>(null);
+  const [beforeDraft, setBeforeDraft] = useState<string | null>(null);
+  const instructionsId = useId();
   const [draft, setDraft] = useState(agent);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -129,6 +134,31 @@ function AgentProfile({
     } finally {
       setPreviewing(false);
     }
+  };
+
+  const draftFromRole = async () => {
+    setIsDrafting(true);
+    setDraftError(null);
+    const result = await api(
+      "/api/agents/draft-instructions",
+      z.object({ instructions: z.string() }),
+      {
+        method: "POST",
+        body: {
+          name: draft.name,
+          role: draft.role,
+          instructions: draft.instructions,
+          model: draft.model,
+        },
+      }
+    );
+    setIsDrafting(false);
+    if (!result.ok) {
+      setDraftError(result.error);
+      return;
+    }
+    setBeforeDraft(draft.instructions);
+    update({ instructions: result.data.instructions });
   };
 
   const write = async (next: (agents: Agent[]) => Agent[]) => {
@@ -212,6 +242,8 @@ function AgentProfile({
               onClick={() => {
                 setDraft(agent);
                 setError(null);
+                setDraftError(null);
+                setBeforeDraft(null);
               }}
             />
             <Button
@@ -249,19 +281,74 @@ function AgentProfile({
               onChange={(event) => update({ role: event.target.value })}
             />
           </label>
-          <label className={fieldClass}>
-            Instructions
-            <span className="text-xs font-normal text-muted-foreground">
+          <div className={fieldClass}>
+            <div className="flex items-end justify-between gap-3">
+              <label htmlFor={instructionsId}>Instructions</label>
+              <div className="flex items-center gap-1">
+                {beforeDraft !== null && !isDrafting && (
+                  <Button
+                    size="xs"
+                    variant="ghost-secondary"
+                    label="Undo"
+                    onClick={() => {
+                      update({ instructions: beforeDraft });
+                      setBeforeDraft(null);
+                    }}
+                  />
+                )}
+                <Button
+                  size="xs"
+                  variant="outline"
+                  icon={Sparkles}
+                  label={
+                    isDrafting
+                      ? "Writing…"
+                      : draft.instructions.trim()
+                        ? "Improve from role"
+                        : "Write from role"
+                  }
+                  tooltip={
+                    draft.role.trim()
+                      ? "Drafts instructions from the role, keeping every rule already here"
+                      : "Add a role first"
+                  }
+                  isLoading={isDrafting}
+                  disabled={!draft.role.trim()}
+                  onClick={() => void draftFromRole()}
+                />
+              </div>
+            </div>
+            <span
+              id={`${instructionsId}-hint`}
+              className="text-xs font-normal text-muted-foreground"
+            >
               Its own system prompt: how it works, its priorities and tone, what
               it must not do. This is what makes two agents behave differently.
             </span>
             <TextArea
+              id={instructionsId}
+              aria-describedby={`${instructionsId}-hint${draftError ? ` ${instructionsId}-error` : ""}`}
+              aria-busy={isDrafting}
               value={draft.instructions}
               minRows={6}
-              placeholder="You review vendor contracts. Flag auto-renewals and price increases above 5%, quote the clause, and never accept terms yourself."
-              onChange={(event) => update({ instructions: event.target.value })}
+              readOnly={isDrafting}
+              className={isDrafting ? "animate-pulse" : undefined}
+              placeholder="Empty. Write your own, or use Write from role. Example: You review vendor contracts. Flag auto-renewals and price increases above 5%, quote the clause, and never accept terms yourself."
+              onChange={(event) => {
+                update({ instructions: event.target.value });
+                setBeforeDraft(null);
+              }}
             />
-          </label>
+            {draftError && (
+              <p
+                id={`${instructionsId}-error`}
+                role="alert"
+                className="text-xs font-normal text-warning-600"
+              >
+                {draftError}
+              </p>
+            )}
+          </div>
           <Input
             label="Tags (comma separated)"
             value={draft.tags.join(", ")}

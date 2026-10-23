@@ -186,6 +186,8 @@ function SettingsForm({ onSaved }: { onSaved: () => void }) {
   // Provider id to the key typed in this session: "" keeps a saved key, null removes it.
   const [keys, setKeys] = useState<Record<string, string | null>>({});
   const [elevenLabsKey, setElevenLabsKey] = useState<string | undefined>();
+  const [cartesiaKey, setCartesiaKey] = useState<string | undefined>();
+  const [deepgramKey, setDeepgramKey] = useState<string | undefined>();
   const [decideKey, setDecideKey] = useState<string | undefined>();
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -213,7 +215,11 @@ function SettingsForm({ onSaved }: { onSaved: () => void }) {
         model: settings.model,
         harnesses: settings.harnesses,
         memoryRoot: settings.memoryRoot,
-        speech: { elevenLabsApiKey: elevenLabsKey ?? "" },
+        speech: {
+          elevenLabsApiKey: elevenLabsKey ?? "",
+          cartesiaApiKey: cartesiaKey ?? "",
+          deepgramApiKey: deepgramKey ?? "",
+        },
         decide:
           settings.decide.kind === "system-one"
             ? { ...settings.decide, apiKey: decideKey ?? "" }
@@ -227,6 +233,8 @@ function SettingsForm({ onSaved }: { onSaved: () => void }) {
     }
     setKeys({});
     setElevenLabsKey(undefined);
+    setCartesiaKey(undefined);
+    setDeepgramKey(undefined);
     setDecideKey(undefined);
     loaded.reload();
     onSaved();
@@ -353,20 +361,44 @@ function SettingsForm({ onSaved }: { onSaved: () => void }) {
           </Section>
 
           <Section
-            title="Call transcription"
-            hint="With an ElevenLabs key, everyone in a call can be transcribed in any browser. Without one, each browser's own speech service is used, and Brave and Firefox have none."
+            title="Voice"
+            hint="Huddles need a voice key so agents can hear and talk: ElevenLabs, Cartesia or Deepgram, or the OpenAI key above. The first one set is used, in that order. ElevenLabs also transcribes everyone in any browser; without it each browser's own speech service is used, and Brave and Firefox have none."
           >
-            <KeyField
-              label="ElevenLabs API key"
-              saved={settings.speech.elevenLabsKeySet ? "" : null}
-              value={elevenLabsKey}
-              placeholder={
-                settings.speech.elevenLabsKeySet
-                  ? "Paste the new key; empty keeps the saved one"
-                  : "Optional"
-              }
-              onChange={setElevenLabsKey}
-            />
+            {(
+              [
+                [
+                  "ElevenLabs API key",
+                  settings.speech.elevenLabsKeySet,
+                  elevenLabsKey,
+                  setElevenLabsKey,
+                ],
+                [
+                  "Cartesia API key",
+                  settings.speech.cartesiaKeySet,
+                  cartesiaKey,
+                  setCartesiaKey,
+                ],
+                [
+                  "Deepgram API key",
+                  settings.speech.deepgramKeySet,
+                  deepgramKey,
+                  setDeepgramKey,
+                ],
+              ] as const
+            ).map(([label, isSet, value, onChange]) => (
+              <KeyField
+                key={label}
+                label={label}
+                saved={isSet ? "" : null}
+                value={value}
+                placeholder={
+                  isSet
+                    ? "Paste the new key; empty keeps the saved one"
+                    : "Optional"
+                }
+                onChange={onChange}
+              />
+            ))}
           </Section>
 
           <Section

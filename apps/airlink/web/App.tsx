@@ -393,6 +393,7 @@ function Workspace({ person }: { person: Person }) {
               isDark={theme.isDark}
               onPresent={setOnlineIds}
               onMembershipChanged={channels.reload}
+              onOpenSettings={() => setSettingsOpen(true)}
             />
           ) : channels.isLoading ? (
             <div className="flex flex-1 items-center justify-center">

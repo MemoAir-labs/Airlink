@@ -17,6 +17,7 @@ import {
   Headphones01,
   Icon,
   LayoutGrid01,
+  Settings02,
   Sparkles,
   UserPlus,
   useSendNotification,
@@ -34,6 +35,7 @@ import {
   peopleSchema,
   uploadFile,
   useApi,
+  voiceSchema,
 } from "./api.ts";
 import { ChatView } from "./ChatView.tsx";
 import { AirlinkViewProvider, airlinkHost } from "./host.tsx";
@@ -81,6 +83,68 @@ interface ChannelProps {
   onPresent: (ids: Set<string>) => void;
   // Someone joined or left, maybe this person.
   onMembershipChanged: () => void;
+  onOpenSettings: () => void;
+}
+
+// A huddle is for talking with the agents, so it stays shut until they have a voice.
+function HuddleBlocked({
+  onOpenSettings,
+  onClose,
+}: {
+  onOpenSettings: () => void;
+  onClose: () => void;
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    dialogRef.current?.showModal();
+  }, []);
+
+  return (
+    <dialog
+      ref={dialogRef}
+      aria-labelledby="huddle-blocked-title"
+      className="m-auto w-[min(440px,calc(100vw-32px))] rounded-2xl border border-border bg-background p-0 text-foreground shadow-2xl backdrop:bg-black/40 backdrop:backdrop-blur-sm dark:border-border-night dark:bg-background-night"
+      onClose={onClose}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) {
+          dialogRef.current?.close();
+        }
+      }}
+    >
+      <div className="flex flex-col gap-4 p-6">
+        <div className="flex items-center gap-3">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted-background dark:bg-muted-background-night">
+            <Icon visual={Headphones01} />
+          </span>
+          <h2 id="huddle-blocked-title" className="text-base font-semibold">
+            Huddles need a voice key
+          </h2>
+        </div>
+        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          Agents hear and answer out loud in a huddle. Add an ElevenLabs,
+          Cartesia, Deepgram or OpenAI key in Settings, and pick an Anthropic or
+          OpenAI model as the default.
+        </p>
+        <div className="flex justify-end gap-2">
+          <Button
+            variant="outline"
+            label="Not now"
+            onClick={() => dialogRef.current?.close()}
+          />
+          <Button
+            variant="primary"
+            icon={Settings02}
+            label="Open Settings"
+            onClick={() => {
+              dialogRef.current?.close();
+              onOpenSettings();
+            }}
+          />
+        </div>
+      </div>
+    </dialog>
+  );
 }
 
 // A channel is its chat beside its space: every object the room made, as windows arranged the
@@ -91,6 +155,7 @@ export function Channel({
   isDark,
   onPresent,
   onMembershipChanged,
+  onOpenSettings,
 }: ChannelProps) {
   const notify = useSendNotification();
   const { data, reload } = useApi(
@@ -102,6 +167,15 @@ export function Channel({
   // The channel's call, open as the huddle around the space. Kept apart from `focused` so opening
   // a doc from inside the huddle covers it without hanging up.
   const [huddle, setHuddle] = useState<string | null>(null);
+  const [isHuddleBlocked, setIsHuddleBlocked] = useState(false);
+  // Asked fresh each time, so a key added in Settings counts on the next try. A failed check lets
+  // the huddle open and show its own error.
+  const canHuddle = useCallback(async () => {
+    const voice = await api("/api/voice", voiceSchema);
+    const isBlocked = voice.ok && !voice.data.available;
+    setIsHuddleBlocked(isBlocked);
+    return !isBlocked;
+  }, []);
   const [tab, setTab] = useState<"chat" | "space">("chat");
   const [showSpace, setShowSpace] = useState(true);
   const [present, setPresent] = useState<
@@ -231,13 +305,22 @@ export function Channel({
       isDark,
       openDoc: (docId: string) =>
         objects.find((object) => object.docName === docId)?.kind === "media"
-          ? setHuddle(docId)
+          ? void canHuddle().then((can) => can && setHuddle(docId))
           : setFocused(docId),
       dock,
       deleteObject,
       uploadFiles,
     }),
-    [person, channel.id, objects, isDark, dock, deleteObject, uploadFiles]
+    [
+      person,
+      channel.id,
+      objects,
+      isDark,
+      dock,
+      deleteObject,
+      uploadFiles,
+      canHuddle,
+    ]
   );
 
   // The new object reaches the space through the person's own connection: the space places
@@ -265,6 +348,9 @@ export function Channel({
   };
 
   const call = async () => {
+    if (!(await canHuddle())) {
+      return;
+    }
     const existing = objects.find((object) => object.kind === "media");
     const docName = existing?.docName ?? (await add("media", "Call"));
     if (docName) {
@@ -417,6 +503,12 @@ export function Channel({
                 </span>
               )}
             </button>
+          )}
+          {isHuddleBlocked && (
+            <HuddleBlocked
+              onOpenSettings={onOpenSettings}
+              onClose={() => setIsHuddleBlocked(false)}
+            />
           )}
           {showMembers && membership.data && (
             <MembersDialog

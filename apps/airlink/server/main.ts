@@ -45,6 +45,7 @@ import {
   completeFor,
   createSettingsFiles,
   decideFor,
+  draftInstructions,
   harnessesFor,
   keptHarnesses,
   publicSettings,
@@ -296,6 +297,10 @@ const voiceKeys = () => {
   return {
     elevenlabs:
       settings.speech.elevenLabsApiKey || config.envApiKeys.elevenlabs || null,
+    cartesia:
+      settings.speech.cartesiaApiKey || config.envApiKeys.cartesia || null,
+    deepgram:
+      settings.speech.deepgramApiKey || config.envApiKeys.deepgram || null,
     openai: settings.keys.openai || config.envApiKeys.openai || null,
     anthropic: settings.keys.anthropic || config.envApiKeys.anthropic || null,
   };
@@ -414,6 +419,8 @@ const handleApi = createApi({
       : result;
   },
   models: () => availableModels(files.settings(), config.envApiKeys),
+  draftInstructions: (agent) =>
+    draftInstructions(files.settings(), config.envApiKeys, agent),
   memoryOf: (agent) => agentMemory(memoryRootOf(files.settings()), agent),
   chatWriters,
   indexFile: (object) =>

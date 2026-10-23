@@ -264,6 +264,7 @@ describe.skipIf(!databaseUrl)("airlink runners", () => {
       saveSettings: () => ({ ok: false, error: "not in this test" }),
       harnesses: async () => [],
       models: () => [],
+      draftInstructions: async () => ({ ok: false, error: "no key" }),
       memoryOf: (agent) => agentMemory(join(dataDir, "memory"), agent),
       chatWriters: async () => [],
       indexFile: async () => {},
@@ -938,7 +939,7 @@ describe.skipIf(!databaseUrl)("airlink runners", () => {
     expect(clock.timers).toHaveLength(0);
   });
 
-  it("makes a runner for an agent's run_code, places it in the channel's space, and re-runs that one by id", async () => {
+  it("makes a runner for an agent's run_code, keeps a one-off run off the space, re-runs it by id, and places it once scheduled", async () => {
     const channel = await newChannel();
     const agent = agentConfigSchema.parse({ id: "juno", name: "Juno" });
     respond = async () => answer({ stdout: "1" });
@@ -964,22 +965,23 @@ describe.skipIf(!databaseUrl)("airlink runners", () => {
       { id: expect.any(String), title: "Q3", kind: "runner" },
     ]);
     expect(first?.text).toContain(`Runner ${objects[0].id} ("Q3"): ok`);
-    const space = await createLiveAgentClient({
-      baseUrl: liveUrl,
-      docName: channel.spaceDoc,
-      token: signLiveToken(
-        {
-          actor: { kind: "human", id: ada.id, name: ada.name },
-          workspaceId,
+    const placedOnSpace = async () =>
+      (
+        await createLiveAgentClient({
+          baseUrl: liveUrl,
           docName: channel.spaceDoc,
-          access: "write",
-        },
-        secret
-      ),
-    }).readSpace();
-    expect(space.objects.map((object) => object.docName)).toEqual([
-      objects[0].id,
-    ]);
+          token: signLiveToken(
+            {
+              actor: { kind: "human", id: ada.id, name: ada.name },
+              workspaceId,
+              docName: channel.spaceDoc,
+              access: "write",
+            },
+            secret
+          ),
+        }).readSpace()
+      ).objects.map((object) => object.docName);
+    expect(await placedOnSpace()).toEqual([]);
 
     await room.runCode?.({
       chatDoc: channel.chatDoc,
@@ -1006,6 +1008,7 @@ describe.skipIf(!databaseUrl)("airlink runners", () => {
       ok: true,
       text: "The runner re-runs every 2 minutes while the channel exists; anyone in the channel can pause it.",
     });
+    expect(await placedOnSpace()).toEqual([objects[0].id]);
 
     expect(
       createRoom({
@@ -1218,7 +1221,7 @@ describe.skipIf(!databaseUrl)("airlink runners", () => {
     expect(info.available).toBe(false);
   });
 
-  it("reports a run that throws after its runner was placed as a failed run, not an unplaced runner", async () => {
+  it("reports a run that throws as a failed run and keeps the runner in the channel", async () => {
     const channel = await newChannel();
     const room = createRoom({
       store,

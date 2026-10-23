@@ -318,7 +318,9 @@ export function createLiveServer({
         actor: claims.actor,
         access: claims.access,
         workspaceId: claims.workspaceId,
-        ...(claims.via && claims.access === "write" ? { via: claims.via } : {}),
+        ...(claims.via === "extension" && claims.access === "write"
+          ? { via: claims.via }
+          : {}),
       };
     },
 

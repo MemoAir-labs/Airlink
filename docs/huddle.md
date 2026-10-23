@@ -7,8 +7,10 @@ goes on. The voice layer is `@memo-air/voice`, built on LiveKit Agents for Node 
 ## What you need
 
 - LiveKit running (the compose `livekit` service, on by default).
-- A **speech key**: ElevenLabs (preferred when both are set) or OpenAI. Set it in Settings or as
-  `ELEVENLABS_API_KEY` / `OPENAI_API_KEY`.
+- A **speech key**: ElevenLabs, Cartesia, Deepgram or OpenAI, used in that order when several are
+  set. Set it in Settings or as `ELEVENLABS_API_KEY` / `CARTESIA_API_KEY` / `DEEPGRAM_API_KEY` /
+  `OPENAI_API_KEY`. Without a speech key and a talker, AirLink blocks the huddle and points to
+  Settings.
 - A **talker**: the default model in Settings must be an Anthropic or OpenAI model with a key.
   The default, `anthropic/claude-haiku-5-5`, works with an Anthropic key.
 

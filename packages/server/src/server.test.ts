@@ -309,6 +309,43 @@ describe.skipIf(!databaseUrl)("live server", () => {
       expect(agentStates().some((state) => state.reading)).toBe(false);
     });
 
+    it("keeps a runner script's reads out of sight, so following stays on the runner", async () => {
+      const readDoc = `test:${crypto.randomUUID()}`;
+      const human = new HocuspocusProvider({
+        url,
+        name: readDoc,
+        document: new Y.Doc(),
+        token: token(
+          { kind: "human", id: "hana", name: "hana" },
+          "write",
+          readDoc
+        ),
+      });
+      providers.push(human);
+      await waitFor(() => human.synced);
+
+      await createLiveAgentClient({
+        baseUrl: url.replace("ws", "http"),
+        docName: readDoc,
+        token: signLiveToken(
+          {
+            actor: analyst,
+            workspaceId: "w1",
+            docName: readDoc,
+            access: "read",
+            via: "script",
+          },
+          jwtSecret
+        ),
+      }).outline();
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      expect(
+        [...(human.awareness?.getStates().values() ?? [])].some(
+          (state) => state.user?.kind === "agent"
+        )
+      ).toBe(false);
+    });
+
     it("forces suggest mode for a suggest token and exports the accepted view", async () => {
       const client = agentClient("suggest");
       const response = await client.ops({

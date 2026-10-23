@@ -17,8 +17,9 @@ export const liveTokenClaimsSchema = z.object({
   workspaceId: z.string(),
   docName: z.string(),
   access: liveAccessSchema,
-  // The browser extension sharing the person's own tab, which serves as the doc's browser.
-  via: z.literal("extension").optional(),
+  // The browser extension sharing the person's own tab, which serves as the doc's browser; or an
+  // agent's runner script, whose reads stay out of sight because its work shows in the runner.
+  via: z.enum(["extension", "script"]).optional(),
 });
 
 export type LiveTokenClaims = z.infer<typeof liveTokenClaimsSchema>;

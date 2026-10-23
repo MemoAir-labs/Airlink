@@ -27,16 +27,29 @@ describe("speech provider and talker", () => {
   const keys = (
     elevenlabsKey: string | null,
     openaiKey: string | null,
-    anthropicKey: string | null
+    anthropicKey: string | null,
+    speech: { cartesia?: string; deepgram?: string } = {}
   ) => ({
     elevenlabs: elevenlabsKey,
+    cartesia: speech.cartesia ?? null,
+    deepgram: speech.deepgram ?? null,
     openai: openaiKey,
     anthropic: anthropicKey,
   });
 
-  it("prefers ElevenLabs for speech, falls back to OpenAI, and has none without either", () => {
+  it("prefers ElevenLabs, then Cartesia, then Deepgram, then OpenAI, and has none without any", () => {
     expect(speechProviderOf(keys("el", "oa", null))).toBe("elevenlabs");
-    expect(speechProviderOf(keys("el", null, null))).toBe("elevenlabs");
+    expect(speechProviderOf(keys("el", null, null, { cartesia: "ca" }))).toBe(
+      "elevenlabs"
+    );
+    expect(
+      speechProviderOf(
+        keys(null, "oa", null, { cartesia: "ca", deepgram: "dg" })
+      )
+    ).toBe("cartesia");
+    expect(speechProviderOf(keys(null, "oa", null, { deepgram: "dg" }))).toBe(
+      "deepgram"
+    );
     expect(speechProviderOf(keys(null, "oa", "an"))).toBe("openai");
     expect(speechProviderOf(keys(null, null, "an"))).toBe(null);
   });
@@ -139,6 +152,8 @@ const waitFor = async (check: () => boolean, timeoutMs: number) => {
 describe.skipIf(!canRun)("ears and voices on a live LiveKit server", () => {
   const keys = {
     elevenlabs: elevenLabsApiKey,
+    cartesia: null,
+    deepgram: null,
     openai: openAiApiKey,
     anthropic: anthropicApiKey,
   };

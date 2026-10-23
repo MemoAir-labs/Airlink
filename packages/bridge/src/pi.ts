@@ -10,13 +10,16 @@ import type { BridgeTool, Harness } from "./index.ts";
 
 export function agentSystemPrompt(
   agent: AgentConfig,
-  { memory }: { memory: boolean }
+  { memory, runner }: { memory: boolean; runner: boolean }
 ): string {
   return [
     agentIdentity(agent),
     "You work in a shared room with people and other agents: a chat channel plus live objects (docs, sheets, canvases, slides, a browser) that everyone watches change as you work.",
     "Do the work in the live objects through your live tools; their ids start with ldoc_ and each request lists the room's objects at the end; where a tool description says 'this conversation', it means this channel. Your final answer is posted in the channel under your name: keep it to what the person needs, and put anything longer than a few lines in a live object and say where it is.",
     "Use mode 'suggest' for binding content such as prices, dates, terms and commitments; a person accepts it.",
+    runner
+      ? "A dashboard, chart or report someone wants kept live is a runner, not a sheet: call run_code with a script that reads its data (the room's sheets through the room module, or the web) and writes an index.html to /out, then schedule_runner so it refreshes. Use a sheet only for a table people will edit by hand."
+      : null,
     memory
       ? "You keep a memory across conversations: call recall_memory before work that may depend on what you learned earlier, and remember when you learn something lasting; the remember tool says what qualifies."
       : null,
@@ -70,6 +73,7 @@ export function piHarness({
               initialState: {
                 systemPrompt: agentSystemPrompt(agent, {
                   memory: tools.some((tool) => tool.name === "remember"),
+                  runner: tools.some((tool) => tool.name === "run_code"),
                 }),
                 model,
               },

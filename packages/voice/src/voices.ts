@@ -1,12 +1,17 @@
 import type { AgentConfig } from "@memo-air/agents";
 
-export type SpeechProviderId = "elevenlabs" | "openai";
+export type SpeechProviderId =
+  | "elevenlabs"
+  | "cartesia"
+  | "deepgram"
+  | "openai";
 export type VoiceOption = { id: string; name: string };
 
 const minSpeed = 0.8;
 const maxSpeed = 1.2;
 
-// Used until the provider's own list arrives (ElevenLabs' premade voices, OpenAI's fixed set).
+// Used until the provider's own list arrives (ElevenLabs' and Cartesia's premade voices, Deepgram's
+// and OpenAI's fixed sets).
 export const defaultVoices: Record<SpeechProviderId, VoiceOption[]> = {
   elevenlabs: [
     { id: "21m00Tcm4TlvDq8ikWAM", name: "Rachel" },
@@ -17,6 +22,21 @@ export const defaultVoices: Record<SpeechProviderId, VoiceOption[]> = {
     { id: "TxGEqnHWrfWFTfGW9XjX", name: "Josh" },
     { id: "AZnzlk1XvdvUeBnXmlld", name: "Domi" },
     { id: "yoZ06aMxZJJ28mfd3POQ", name: "Sam" },
+  ],
+  cartesia: [
+    { id: "f786b574-daa5-4673-aa0c-cbe3e8534c02", name: "Default" },
+    { id: "79a125e8-cd45-4c13-8a67-188112f4dd22", name: "British Lady" },
+    { id: "a0e99841-438c-4a64-b679-ae501e7d6091", name: "Barbershop Man" },
+  ],
+  deepgram: [
+    { id: "aura-2-asteria-en", name: "Asteria" },
+    { id: "aura-2-andromeda-en", name: "Andromeda" },
+    { id: "aura-2-apollo-en", name: "Apollo" },
+    { id: "aura-2-arcas-en", name: "Arcas" },
+    { id: "aura-2-hera-en", name: "Hera" },
+    { id: "aura-2-orion-en", name: "Orion" },
+    { id: "aura-2-luna-en", name: "Luna" },
+    { id: "aura-2-zeus-en", name: "Zeus" },
   ],
   openai: [
     { id: "coral", name: "Coral" },

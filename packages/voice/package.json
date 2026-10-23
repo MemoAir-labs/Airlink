@@ -31,6 +31,8 @@
   "dependencies": {
     "@livekit/agents": "1.9.3",
     "@livekit/agents-plugin-anthropic": "1.9.3",
+    "@livekit/agents-plugin-cartesia": "1.9.3",
+    "@livekit/agents-plugin-deepgram": "1.9.3",
     "@livekit/agents-plugin-elevenlabs": "1.9.3",
     "@livekit/agents-plugin-openai": "1.9.3",
     "@livekit/local-inference": "0.2.7",

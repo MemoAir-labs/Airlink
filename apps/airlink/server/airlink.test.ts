@@ -72,6 +72,7 @@ describe.skipIf(!databaseUrl)("airlink server", () => {
       },
       harnesses: async () => [],
       models: () => [],
+      draftInstructions: async () => ({ ok: false, error: "no key" }),
       memoryOf: (agent) => agentMemory(join(dataDir, "memory"), agent),
       chatWriters: async () => [],
       indexFile: async () => {},

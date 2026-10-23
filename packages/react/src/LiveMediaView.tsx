@@ -873,8 +873,8 @@ function MediaBody({
       >
         {room && serverVoiceState === false && (
           <p className="mx-2 mt-2 rounded-lg bg-muted-background px-3 py-2 text-xs text-muted-foreground dark:bg-muted-background-night dark:text-muted-foreground-night">
-            Agents answer this call in chat. Add an ElevenLabs or OpenAI key in
-            Settings to hear them.
+            Agents answer this call in chat. Add an ElevenLabs, Cartesia,
+            Deepgram or OpenAI key in Settings to hear them.
           </p>
         )}
         {room && stage ? (

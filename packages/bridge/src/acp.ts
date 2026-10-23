@@ -160,6 +160,7 @@ export function acpHarness({
           isNew
             ? `${agentSystemPrompt(agent, {
                 memory: tools.some((tool) => tool.name === "remember"),
+                runner: tools.some((tool) => tool.name === "run_code"),
               })}\n\n---\n\n${prompt}`
             : prompt
         );

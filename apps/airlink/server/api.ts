@@ -55,6 +55,12 @@ const previewSchema = z.object({
   voiceId: z.string().min(1).max(200),
   speed: z.number().min(0.5).max(2),
 });
+const draftSchema = z.object({
+  name: z.string().trim().min(1).max(200),
+  role: z.string().trim().min(1).max(2000),
+  instructions: z.string().max(20_000),
+  model: z.string().max(200).optional(),
+});
 const leaveSchema = z.object({ identity: z.string().min(1).max(200) });
 const mediaTokenSchema = z.object({ identity: z.string().min(1) });
 const deleteSchema = z.object({ ifUntouched: z.boolean().optional() });
@@ -154,6 +160,11 @@ export type AirlinkApiDeps = {
   ) => { ok: true; settings: PublicSettings } | { ok: false; error: string };
   harnesses: () => Promise<DetectedHarness[]>;
   models: () => { id: string; name: string }[];
+  draftInstructions: (
+    agent: z.infer<typeof draftSchema>
+  ) => Promise<
+    { ok: true; instructions: string } | { ok: false; error: string }
+  >;
   memoryOf: (agent: AgentConfig) => ReturnType<typeof agentMemory>;
   chatWriters: (
     chatDoc: string
@@ -960,6 +971,16 @@ export function createApi(deps: AirlinkApiDeps) {
       }
       const result = deps.saveAgents(input.data);
       return saved(result, result.ok ? { agents: result.agents } : null);
+    }
+    if (path === "/api/agents/draft-instructions" && method === "POST") {
+      const input = await readJson(request, draftSchema);
+      if (!input.ok) {
+        return input.reply;
+      }
+      const result = await deps.draftInstructions(input.data);
+      return result.ok
+        ? { status: 200, body: { instructions: result.instructions } }
+        : fail(502, result.error);
     }
     if (path === "/api/models" && method === "GET") {
       return { status: 200, body: { models: deps.models() } };

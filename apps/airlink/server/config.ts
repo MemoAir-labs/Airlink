@@ -24,6 +24,8 @@ export type AirlinkConfig = {
     anthropic: string | null;
     openai: string | null;
     elevenlabs: string | null;
+    cartesia: string | null;
+    deepgram: string | null;
   };
   production: boolean;
 };
@@ -82,6 +84,8 @@ export function readConfig(env: NodeJS.ProcessEnv): AirlinkConfig {
     envApiKeys: {
       anthropic: env.ANTHROPIC_API_KEY || null,
       elevenlabs: env.ELEVENLABS_API_KEY || null,
+      cartesia: env.CARTESIA_API_KEY || null,
+      deepgram: env.DEEPGRAM_API_KEY || null,
       openai: env.OPENAI_API_KEY || null,
     },
     production: env.NODE_ENV === "production",

@@ -44,8 +44,16 @@ export const settingsSchema = z.object({
   harnesses: z.array(z.string()).default([]),
   // Empty means <data folder>/memory.
   memoryRoot: z.string().default(""),
-  // Call transcription in every browser; without a key each browser's own speech service is used.
-  speech: z.object({ elevenLabsApiKey: z.string().default("") }).default({}),
+  // Agents' voices in a huddle, from the first provider with a key (OpenAI's key also counts).
+  // ElevenLabs also transcribes calls in every browser; without it each browser's own speech
+  // service is used.
+  speech: z
+    .object({
+      elevenLabsApiKey: z.string().default(""),
+      cartesiaApiKey: z.string().default(""),
+      deepgramApiKey: z.string().default(""),
+    })
+    .default({}),
   // Who answers a message that names nobody: a small model on the person's own key, or a System
   // One decision model (Jev by key, or Laya at a local URL). "none" is what older files saved.
   decide: z
@@ -73,7 +81,11 @@ export type Settings = z.infer<typeof settingsSchema>;
 export type PublicSettings = Omit<Settings, "keys" | "decide" | "speech"> & {
   // The saved key's last four characters, so a person sees which key is in use.
   providers: { id: string; name: string; saved: string | null }[];
-  speech: { elevenLabsKeySet: boolean };
+  speech: {
+    elevenLabsKeySet: boolean;
+    cartesiaKeySet: boolean;
+    deepgramKeySet: boolean;
+  };
   decide:
     | { kind: "model"; model: string | null }
     | { kind: "system-one"; url: string; model: string; apiKeySet: boolean };
@@ -169,6 +181,10 @@ export function createSettingsFiles(dataDir: string) {
         elevenLabsApiKey:
           parsed.data.speech.elevenLabsApiKey ||
           current.speech.elevenLabsApiKey,
+        cartesiaApiKey:
+          parsed.data.speech.cartesiaApiKey || current.speech.cartesiaApiKey,
+        deepgramApiKey:
+          parsed.data.speech.deepgramApiKey || current.speech.deepgramApiKey,
       },
       decide:
         parsed.data.decide.kind === "system-one"
@@ -244,7 +260,11 @@ export function publicSettings(
           ? `${envApiKeys[id].slice(-4)} (from .env)`
           : null,
     })),
-    speech: { elevenLabsKeySet: settings.speech.elevenLabsApiKey !== "" },
+    speech: {
+      elevenLabsKeySet: settings.speech.elevenLabsApiKey !== "",
+      cartesiaKeySet: settings.speech.cartesiaApiKey !== "",
+      deepgramKeySet: settings.speech.deepgramApiKey !== "",
+    },
     decide:
       settings.decide.kind === "system-one"
         ? {
@@ -472,4 +492,86 @@ export async function scribeTokenFor(
   return response.ok && parsed.success
     ? { token: parsed.data.token, baseUri: "wss://api.elevenlabs.io" }
     : null;
+}
+
+// TIDD-EC shaped: the drafted text is mostly rules, so its Always/Never lists stay explicit. The
+// room's shared rules (live objects, suggest mode, never claim an unconfirmed change) are added
+// at run time by agentSystemPrompt, so the draft leaves them out.
+const draftInstructionsPrompt = `You write the instructions (the system prompt) for one AI agent in AirLink, a shared room where people and several agents talk in a channel and work together in live docs, sheets, canvases and slides. Each agent has a one-line role that decides when it is picked; its instructions decide how it behaves once picked. You are given the agent's name, its role, and possibly its current instructions.
+
+Write the instructions in second person ("You ..."), in this shape, plain text with these four labels and short bullets:
+
+What you do: one or two sentences that sharpen the role into a concrete job and the outcome people get.
+How you work:
+- 3 to 5 steps or habits specific to this job: what to check first, what to produce, where to put it (a reply in the channel for short answers, a live doc, sheet, canvas or slide for anything longer; a dashboard or chart that must stay current is a runner: a script that writes an index.html and refreshes on a schedule, never a sheet), when to ask a clarifying question instead of guessing.
+Always:
+- 2 to 4 rules on quality, tone and priorities for this job.
+Never:
+- 2 to 4 prohibitions, each a concrete action the agent must not take, stated as "Never ...".
+
+Rules for writing them:
+- If current instructions are given, keep every rule, fact and prohibition they state, and improve their wording and structure around them; do not drop or soften any of them.
+- Never invent facts about the person's company, customers, tools, numbers or thresholds. Where a specific value would help but is unknown, write a placeholder like [fill in: approval limit].
+- Do not restate generic rules every agent already gets: working through live tools, suggesting binding content for a person to accept, not claiming changes a tool did not confirm, not typing passwords or card numbers.
+- Stay inside the role; do not widen the agent's job.
+- Keep it under 200 words.
+
+Reply with the instructions only: no preamble, no title, no code fence, no markdown headings or bold.`;
+
+// A first draft of an agent's instructions from its name and role, on the model the agent runs on.
+export async function draftInstructions(
+  settings: Settings,
+  envApiKeys: EnvApiKeys,
+  agent: { name: string; role: string; instructions: string; model?: string }
+): Promise<{ ok: true; instructions: string } | { ok: false; error: string }> {
+  const ref = agent.model || settings.model;
+  const providerId = ref.slice(0, ref.indexOf("/"));
+  const key = keyOf(settings, envApiKeys, providerId);
+  const provider = llmProviders.find(({ id }) => id === providerId);
+  if (!key || !provider) {
+    return {
+      ok: false,
+      error: `No ${providerId} key yet: add one in Settings.`,
+    };
+  }
+  const credentials = new InMemoryCredentialStore();
+  const models = createModels({ credentials });
+  models.setProvider(provider);
+  await credentials.modify(providerId, async () => ({ type: "api_key", key }));
+  const model = models.getModel(providerId, ref.slice(ref.indexOf("/") + 1));
+  if (!model) {
+    return { ok: false, error: `${providerId} has no model for ${ref}.` };
+  }
+  const reply = await models.completeSimple(
+    model,
+    {
+      systemPrompt: draftInstructionsPrompt,
+      messages: [
+        {
+          role: "user",
+          content: [
+            `Agent name: ${agent.name}`,
+            `Role: ${agent.role}`,
+            agent.instructions.trim()
+              ? `Current instructions:\n${agent.instructions.trim()}`
+              : null,
+          ]
+            .filter((part) => part !== null)
+            .join("\n\n"),
+          timestamp: Date.now(),
+        },
+      ],
+    },
+    { maxTokens: 600 }
+  );
+  if (reply.stopReason === "error" || reply.stopReason === "aborted") {
+    return { ok: false, error: reply.errorMessage ?? reply.stopReason };
+  }
+  return {
+    ok: true,
+    instructions: reply.content
+      .flatMap((part) => (part.type === "text" ? [part.text] : []))
+      .join("")
+      .trim(),
+  };
 }

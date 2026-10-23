@@ -96,7 +96,11 @@ export const settingsSchema = z.object({
     model: z.string(),
     harnesses: z.array(z.string()),
     memoryRoot: z.string(),
-    speech: z.object({ elevenLabsKeySet: z.boolean() }),
+    speech: z.object({
+      elevenLabsKeySet: z.boolean(),
+      cartesiaKeySet: z.boolean(),
+      deepgramKeySet: z.boolean(),
+    }),
     decide: z.discriminatedUnion("kind", [
       z.object({ kind: z.literal("model"), model: z.string().nullable() }),
       z.object({

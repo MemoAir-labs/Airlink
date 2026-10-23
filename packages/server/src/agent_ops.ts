@@ -1166,7 +1166,11 @@ export function createAgentOps({
     docName: string,
     claims: LiveTokenClaims
   ) => {
-    if (claims.actor.kind === "agent" && connection.document) {
+    if (
+      claims.actor.kind === "agent" &&
+      claims.via !== "script" &&
+      connection.document
+    ) {
       showPresence(
         connection.document,
         docName,

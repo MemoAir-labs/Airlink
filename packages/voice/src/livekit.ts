@@ -9,6 +9,8 @@ import {
   voice,
 } from "@livekit/agents";
 import * as anthropic from "@livekit/agents-plugin-anthropic";
+import * as cartesia from "@livekit/agents-plugin-cartesia";
+import * as deepgram from "@livekit/agents-plugin-deepgram";
 import * as elevenlabs from "@livekit/agents-plugin-elevenlabs";
 import * as openai from "@livekit/agents-plugin-openai";
 import type {
@@ -27,6 +29,8 @@ initializeLogger({ pretty: false, level: "warn" });
 
 export type VoiceKeys = {
   elevenlabs: string | null;
+  cartesia: string | null;
+  deepgram: string | null;
   openai: string | null;
   anthropic: string | null;
 };
@@ -34,6 +38,8 @@ export type OnError = (err: unknown, where: string) => void;
 
 const elevenLabsSttModel = "scribe_v2_realtime";
 const elevenLabsTtsModel = "eleven_flash_v2_5";
+const cartesiaTtsModel = "sonic-3";
+const deepgramSttModel = "nova-3";
 const openAiTtsModel = "gpt-4o-mini-tts";
 const openAiSttModel = "gpt-4o-mini-transcribe";
 const endpointingDelayMs = 700;
@@ -61,8 +67,17 @@ const isTalkerProvider = (value: string): value is TalkerProvider =>
 const isOpenAiVoice = (id: string): id is OpenAiVoice =>
   openAiVoices.some((each) => each === id);
 
+// A dedicated speech key wins over OpenAI's, which may be there only for the talker.
 export const speechProviderOf = (keys: VoiceKeys): SpeechProviderId | null =>
-  keys.elevenlabs ? "elevenlabs" : keys.openai ? "openai" : null;
+  keys.elevenlabs
+    ? "elevenlabs"
+    : keys.cartesia
+      ? "cartesia"
+      : keys.deepgram
+        ? "deepgram"
+        : keys.openai
+          ? "openai"
+          : null;
 
 const spokenStyle = [
   "You are in a live voice call with people and other agents. Everything you write is spoken aloud.",
@@ -71,17 +86,28 @@ const spokenStyle = [
   "For anything that needs live objects, files, the browser, or more than a quick answer, call `work` with the task, then say in one short sentence what you are doing.",
 ].join("\n");
 
-const sttFor = (provider: SpeechProviderId, keys: VoiceKeys) =>
-  provider === "elevenlabs"
-    ? new elevenlabs.STT({
+const sttFor = (provider: SpeechProviderId, keys: VoiceKeys) => {
+  switch (provider) {
+    case "elevenlabs":
+      return new elevenlabs.STT({
         apiKey: keys.elevenlabs ?? "",
         model: elevenLabsSttModel,
-      })
-    : new openai.STT({
+      });
+    case "cartesia":
+      return new cartesia.STT({ apiKey: keys.cartesia ?? "" });
+    case "deepgram":
+      return new deepgram.STT({
+        apiKey: keys.deepgram ?? "",
+        model: deepgramSttModel,
+      });
+    case "openai":
+      return new openai.STT({
         apiKey: keys.openai ?? "",
         model: openAiSttModel,
         useRealtime: true,
       });
+  }
+};
 
 const ttsFor = (
   provider: SpeechProviderId,
@@ -89,9 +115,10 @@ const ttsFor = (
   voiceId: string,
   speed: number,
   role: string
-) =>
-  provider === "elevenlabs"
-    ? new elevenlabs.TTS({
+) => {
+  switch (provider) {
+    case "elevenlabs":
+      return new elevenlabs.TTS({
         apiKey: keys.elevenlabs ?? "",
         voiceId,
         model: elevenLabsTtsModel,
@@ -102,14 +129,30 @@ const ttsFor = (
           speed,
           use_speaker_boost: true,
         },
-      })
-    : new openai.TTS({
+      });
+    case "cartesia":
+      return new cartesia.TTS({
+        apiKey: keys.cartesia ?? "",
+        model: cartesiaTtsModel,
+        voice: voiceId,
+        speed,
+      });
+    case "deepgram":
+      return new deepgram.TTS({
+        apiKey: keys.deepgram ?? "",
+        model: voiceId,
+        speed,
+      });
+    case "openai":
+      return new openai.TTS({
         apiKey: keys.openai ?? "",
         model: openAiTtsModel,
         voice: isOpenAiVoice(voiceId) ? voiceId : "coral",
         speed,
         instructions: `Speak naturally, like a warm, concise colleague${role ? ` who is ${role}` : ""}. Relaxed pace, friendly tone.`,
       });
+  }
+};
 
 const talkerOf = (model: string) => {
   const [provider = "", ...rest] = model.split("/");

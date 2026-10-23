@@ -278,6 +278,26 @@ export function LiveDocHistory({
                   </span>
                 </div>
               ))}
+              {version.objects.map((change) => (
+                <div
+                  key={`${change.id}-${change.kind}`}
+                  className="flex items-baseline gap-2 text-sm text-foreground dark:text-foreground-night"
+                >
+                  <span className="w-28 shrink-0 text-xs text-muted-foreground dark:text-muted-foreground-night">
+                    {change.kind}
+                  </span>
+                  <span
+                    className={cn(
+                      change.kind === "removed" &&
+                        "text-muted-foreground line-through dark:text-muted-foreground-night",
+                      change.kind === "placed" &&
+                        "text-green-700 dark:text-green-400"
+                    )}
+                  >
+                    {change.title}
+                  </span>
+                </div>
+              ))}
               {version.shapes.map((change) => (
                 <div
                   key={change.id}
