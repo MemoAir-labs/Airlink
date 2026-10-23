@@ -101,7 +101,6 @@ type QueuedUpdate = { docName: string; update: Uint8Array; actor: LiveActor };
 
 const maxInsertRows = 5000;
 const backlogAlarm = 50_000;
-const maxFramesPerDoc = 500;
 
 export type LivePersistence = ReturnType<typeof createPersistence>;
 
@@ -111,12 +110,15 @@ export function createPersistence({
   flushIntervalMs = 500,
   flushBatchSize = 200,
   compactThreshold = 500,
+  maxFramesPerDoc = 500,
 }: {
   pool: Pool;
   logger: Logger;
   flushIntervalMs?: number;
   flushBatchSize?: number;
   compactThreshold?: number;
+  // Screenshot history kept per browser or desktop; 0 keeps none.
+  maxFramesPerDoc?: number;
 }) {
   let queue: QueuedUpdate[] = [];
   // Flushes and compactions share one chain so a compaction never reads max(id) while a lower id
@@ -410,6 +412,9 @@ export function createPersistence({
       actor: LiveActor,
       jpeg: Buffer
     ) {
+      if (maxFramesPerDoc === 0) {
+        return;
+      }
       await pool.query(
         "INSERT INTO live_browser_frames (doc_name, url, actor, jpeg) VALUES ($1, $2, $3, $4)",
         [docName, url, JSON.stringify(actor), jpeg]

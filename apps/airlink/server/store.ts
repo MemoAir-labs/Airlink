@@ -193,6 +193,8 @@ export function createStore(pool: pg.Pool) {
       );
       CREATE INDEX IF NOT EXISTS airlink_runs_doc ON airlink_runs (doc_name, id);
       ALTER TABLE airlink_runners ADD COLUMN IF NOT EXISTS agent_id TEXT;
+      UPDATE airlink_runners r SET agent_id = o.created_by
+        FROM airlink_objects o WHERE o.doc_name = r.doc_name AND r.agent_id IS NULL;
       CREATE TABLE IF NOT EXISTS airlink_run_files (
         doc_name TEXT NOT NULL REFERENCES airlink_objects(doc_name) ON DELETE CASCADE,
         name TEXT NOT NULL,
@@ -214,6 +216,12 @@ export function createStore(pool: pg.Pool) {
       );
       CREATE INDEX IF NOT EXISTS airlink_search_chunks_tsv ON airlink_search_chunks USING GIN (tsv);
       CREATE INDEX IF NOT EXISTS airlink_search_chunks_channel ON airlink_search_chunks (channel_id, kind, at);
+      CREATE TABLE IF NOT EXISTS airlink_channel_briefs (
+        channel_id TEXT PRIMARY KEY REFERENCES airlink_channels(id) ON DELETE CASCADE,
+        summary TEXT NOT NULL,
+        upto_message TEXT NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
     `);
     });
     const { rowCount } = await pool.query(
@@ -490,6 +498,30 @@ export function createStore(pool: pg.Pool) {
         );
       }
     });
+  };
+
+  const brief = async (
+    channelId: string
+  ): Promise<{ summary: string; uptoMessage: string } | null> => {
+    const { rows } = await pool.query(
+      "SELECT summary, upto_message FROM airlink_channel_briefs WHERE channel_id = $1",
+      [channelId]
+    );
+    return rows[0]
+      ? { summary: rows[0].summary, uptoMessage: rows[0].upto_message }
+      : null;
+  };
+
+  const saveBrief = async (
+    channelId: string,
+    summary: string,
+    uptoMessage: string
+  ) => {
+    await pool.query(
+      `INSERT INTO airlink_channel_briefs (channel_id, summary, upto_message) VALUES ($1, $2, $3)
+       ON CONFLICT (channel_id) DO UPDATE SET summary = $2, upto_message = $3, updated_at = now()`,
+      [channelId, summary, uptoMessage]
+    );
   };
 
   const isIndexed = async (source: string): Promise<boolean> =>
@@ -949,6 +981,8 @@ export function createStore(pool: pg.Pool) {
     indexMessages,
     indexObject,
     isIndexed,
+    brief,
+    saveBrief,
     search,
     addMembers,
     removeMember,

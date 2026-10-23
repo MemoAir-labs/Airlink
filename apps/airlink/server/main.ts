@@ -34,6 +34,7 @@ import pino from "pino";
 import type * as Y from "yjs";
 
 import { createApi } from "./api.ts";
+import { createBriefs } from "./brief.ts";
 import { loadSecret, readConfig } from "./config.ts";
 import { createRoom, workspaceId } from "./room.ts";
 import { controlClient, createRunner, docStateWriter } from "./runner.ts";
@@ -41,6 +42,7 @@ import { createSearchIndex } from "./search.ts";
 import {
   availableModels,
   closeKept,
+  completeFor,
   createSettingsFiles,
   decideFor,
   harnessesFor,
@@ -84,6 +86,11 @@ const readDoc = async <T>(
   }
 };
 const searchIndex = createSearchIndex({ store, readDoc });
+const briefs = createBriefs({
+  store,
+  complete: () => completeFor(files.settings(), config.envApiKeys),
+  logger,
+});
 
 const browserProvider = config.browserCdpUrl
   ? cdpEndpointProvider({ url: config.browserCdpUrl })
@@ -115,7 +122,13 @@ const live = createLiveServer({
   decide: (input) => decide(input),
   onTurn: async (turn) => bridge?.onTurn(turn),
   onSpoken: async (turn) => bridge?.onTurn(turn),
-  onStored: (docName, document) => searchIndex.stored(docName, document),
+  // Nothing in AirLink reads screenshot history: people watch live over LiveKit, and agents read
+  // the page itself.
+  browserHistoryFrames: 0,
+  onStored: async (docName, document) => {
+    await searchIndex.stored(docName, document);
+    await briefs.stored(docName, document);
+  },
   browserProvider,
   desktopProvider: config.e2bApiKey
     ? e2bDesktopProvider({ apiKey: config.e2bApiKey })
@@ -236,6 +249,7 @@ const room = createRoom({
   jwtSecret: secret,
   runner,
   searchIndex,
+  briefs,
 });
 let detected = await detectHarnesses();
 

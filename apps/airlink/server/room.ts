@@ -9,6 +9,7 @@ import {
   isCreateToolName,
   parseCreateToolCall,
 } from "@memo-air/tools";
+import type { Briefs } from "./brief.ts";
 import { fileText } from "./extract.ts";
 import type { Runner } from "./runner.ts";
 import { describeRun, unreachableText } from "./runner.ts";
@@ -25,12 +26,14 @@ export function createRoom({
   jwtSecret,
   runner,
   searchIndex,
+  briefs,
 }: {
   store: Store;
   liveUrl: string;
   jwtSecret: string;
   runner?: Runner;
   searchIndex?: SearchIndex;
+  briefs?: Briefs;
 }): BridgeRoom {
   const clientFor = (actor: LiveActor, docName: string) =>
     createLiveAgentClient({
@@ -145,6 +148,7 @@ export function createRoom({
       return file ? fileText(file) : { ok: false, text: "That file is gone." };
     },
     searchRoom: searchIndex?.searchRoom,
+    summaryOf: briefs?.summaryOf,
     taggedOnly: async (chatDoc) =>
       (await store.docOf(chatDoc))?.channel.replies === "tagged",
     agentIdsOf: async (chatDoc) => {

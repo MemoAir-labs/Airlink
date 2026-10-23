@@ -67,6 +67,9 @@ Turn a harness on in Settings, then set an agent's `harness` to its id (`claude`
 
 ## Routing
 
+Each channel has a reply mode in its header. **Auto** follows the steps below. **On mention**
+skips steps 2–4: an agent answers only when `@`-mentioned, and in a huddle only when named.
+
 Who answers a chat message:
 
 1. **Mentions.** Every agent `@`-mentioned answers. A message that mentions only people is left to
@@ -75,8 +78,9 @@ Who answers a chat message:
    does not tag messages yet, so today this step is skipped; `routeMessage` supports it for hosts
    that do.
 3. **The decision node.** Otherwise, with two or more candidates, the decision node picks by role.
-   A confident pick (≥ 0.6) answers. A confident "none" means nobody answers (the message was for
-   a person). An unsure pick still answers and is told it was unsure.
+   A confident pick (≥ 0.6) answers. A confident "none" means nobody answers, which in chat is
+   only a message plainly addressed to another person; small talk or a question no role covers
+   goes to the closest agent. An unsure pick still answers and is told it was unsure.
 4. **Fallback.** With no pick, the first agent in the channel answers.
 
 Who answers a line said in a huddle: the agents it names, else the one the decision node is sure
@@ -100,9 +104,36 @@ Each turn an agent gets:
   bring them to front. Deleting is not offered; that stays with people.
 - **`read_live_file`**: read a file someone uploaded to the channel. Text and code as they are, a
   PDF's text page by page, an `.xlsx` as CSV per sheet.
+- **`search_room`**: keyword search over the channel's whole message history and the text of its
+  docs, sheets, slides, canvases and uploaded PDF, `.xlsx` and text files. It returns the best
+  passages with where they are; any word may match and passages matching more rank first.
+- **`read_chat`**: the channel's messages in order, around a message id or just before one.
+- **`run_code` and `schedule_runner`**: run a Python or Node script in a sandboxed runner window
+  everyone sees, with the channel's files read-only in `/files`; an `index.html` written to
+  `/out` becomes a live dashboard, and a schedule re-runs it. The script can call the agent's own
+  room tools: `from room import room` in Python or `import { room } from "./room.mjs"` in Node,
+  then `room.search_room(query="…")` and so on, each returning the tool's text. Calls go over a
+  socket to the runner's control server and back to AirLink, which runs them as the agent that
+  wrote the code; the jail's network fence is unchanged. At most 50 calls a run, and never
+  `run_code` or `schedule_runner`. A scheduled re-run calls them again, so a dashboard pulls live
+  room data.
 - **`recall_memory` and `remember`**, below.
 
-The prompt lists every live object in the room, so the agent knows what ids to use.
+## Context
+
+An agent's prompt is rebuilt every turn from what is stored, so nothing is lost when AirLink
+restarts and every agent sees the same channel:
+
+- the channel's running summary, rewritten by the router's small model in the background once
+  about 6,000 characters of chat pile up past it, citing message ids;
+- up to three of the agent's own memories that share words with the message;
+- the channel's five latest messages, from every person and agent;
+- the message or event it is answering;
+- every live object in the room, so the agent knows what ids to use.
+
+Everything older is reached on demand with `search_room` and `read_chat`. The search index
+(`airlink_search_chunks`) is derived: rebuilt from the docs after each save and at start, and
+emptied with the channel or object it came from.
 
 ## Memory
 

@@ -279,6 +279,19 @@ export function readLastAdded(doc: Y.Doc, count: number): ChatMessage[] {
     });
 }
 
+// The messages that arrived after the one with this id, in arrival order; every message when the
+// id is null or no longer found.
+export function readAddedAfter(doc: Y.Doc, id: string | null): ChatMessage[] {
+  const all = chatMessages(doc)
+    .toArray()
+    .flatMap((message) => {
+      const read = readMessage(message);
+      return read ? [read] : [];
+    });
+  const at = id === null ? -1 : all.findIndex((message) => message.id === id);
+  return all.slice(at + 1);
+}
+
 // Calls back once per message added to the doc after this point, with the transaction's origin,
 // so a host can treat a person's post as an event the moment it lands; edits, reactions and
 // streamed text are not new messages.

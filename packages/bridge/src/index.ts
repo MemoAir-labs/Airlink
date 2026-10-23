@@ -92,6 +92,8 @@ export type BridgeRoom = {
   agentIdsOf?(chatDoc: string): Promise<string[] | null>;
   // True when the channel's agents answer only when named, never on the room's own judgment.
   taggedOnly?(chatDoc: string): Promise<boolean>;
+  // The channel's running summary of everything before its latest messages.
+  summaryOf?(chatDoc: string): Promise<string | null>;
   // Keyword search over the channel's messages and the text of its objects and uploads.
   searchRoom?(
     chatDoc: string,
@@ -223,6 +225,8 @@ const readChatSchema = {
 };
 
 const recentMessages = 5;
+const recalledMemories = 3;
+const memoryChars = 300;
 const notInScripts = new Set(["run_code", "schedule_runner"]);
 const messageChars = 800;
 const triggerSchema = z.object({ messageId: z.string() });
@@ -718,6 +722,37 @@ export function createBridge({
     return () => clearInterval(typingTimer);
   };
 
+  // A few of the agent's own memories that share words with what was said, so it starts the turn
+  // knowing them instead of having to think to look.
+  const recallFor = async (
+    agent: AgentConfig,
+    text: string
+  ): Promise<string | null> => {
+    if (memoryRoot === undefined) {
+      return null;
+    }
+    const words = (text.toLowerCase().match(/[\p{L}\p{N}]{4,}/gu) ?? []).slice(
+      0,
+      24
+    );
+    if (words.length === 0) {
+      return null;
+    }
+    const entries = (
+      await agentMemory(memoryRoot, agent)
+        .store.read(words.join(" "))
+        .catch(() => [])
+    ).slice(0, recalledMemories);
+    return entries.length
+      ? `From your memory (recall_memory for more):\n${entries
+          .map(
+            (entry) =>
+              `- ${entry.title}${entry.description ? `: ${entry.description}` : ""} — ${entry.body.trim().slice(0, memoryChars)}`
+          )
+          .join("\n")}`
+      : null;
+  };
+
   const runAgent = async (
     agent: AgentConfig,
     turn: BridgeTurn,
@@ -759,7 +794,15 @@ export function createBridge({
         logger.error({ err, chatDoc }, "bridge: recent messages failed");
         return [];
       });
+    const summary = room.summaryOf
+      ? await room.summaryOf(chatDoc).catch(() => null)
+      : null;
+    const remembered = await recallFor(agent, turn.event.summary);
     const prompt = [
+      summary
+        ? `What this channel has covered so far, summarised (cites [message ids] for read_chat):\n${summary}`
+        : null,
+      remembered,
       recent.length
         ? `The channel's latest messages, oldest first. Older history and everything in the room's objects and files: search_room, read_chat.\n${recent.map(messageLine).join("\n")}`
         : null,

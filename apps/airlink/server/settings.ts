@@ -266,28 +266,70 @@ const routerModel = (settings: Settings, envApiKeys: EnvApiKeys) =>
     keyOf(settings, envApiKeys, ref.slice(0, ref.indexOf("/")))
   ) ?? null;
 
+// The router's small model, for the background jobs that need words rather than a choice.
+async function routerPi(settings: Settings, envApiKeys: EnvApiKeys) {
+  const ref = routerModel(settings, envApiKeys);
+  if (!ref) {
+    return null;
+  }
+  const providerId = ref.slice(0, ref.indexOf("/"));
+  const credentials = new InMemoryCredentialStore();
+  const models = createModels({ credentials });
+  const provider = llmProviders.find(({ id }) => id === providerId);
+  if (provider) {
+    models.setProvider(provider);
+  }
+  await credentials.modify(providerId, async () => ({
+    type: "api_key",
+    key: keyOf(settings, envApiKeys, providerId),
+  }));
+  const model = models.getModel(providerId, ref.slice(ref.indexOf("/") + 1));
+  return model ? { models, model } : null;
+}
+
+export type Complete = (input: {
+  system: string;
+  prompt: string;
+  maxTokens: number;
+}) => Promise<string | null>;
+
+// Null when the person has no key the router can use; a call that fails answers null.
+export async function completeFor(
+  settings: Settings,
+  envApiKeys: EnvApiKeys
+): Promise<Complete | null> {
+  const pi = await routerPi(settings, envApiKeys);
+  if (!pi) {
+    return null;
+  }
+  return async ({ system, prompt, maxTokens }) => {
+    const reply = await pi.models.completeSimple(
+      pi.model,
+      {
+        systemPrompt: system,
+        messages: [{ role: "user", content: prompt, timestamp: Date.now() }],
+      },
+      { maxTokens }
+    );
+    if (reply.stopReason === "error" || reply.stopReason === "aborted") {
+      return null;
+    }
+    return (
+      reply.content
+        .flatMap((part) => (part.type === "text" ? [part.text] : []))
+        .join("")
+        .trim() || null
+    );
+  };
+}
+
 export async function decideFor(
   settings: Settings,
   envApiKeys: EnvApiKeys
 ): Promise<Decide> {
   if (settings.decide.kind === "model") {
-    const ref = routerModel(settings, envApiKeys);
-    if (!ref) {
-      return noOpinion;
-    }
-    const providerId = ref.slice(0, ref.indexOf("/"));
-    const credentials = new InMemoryCredentialStore();
-    const models = createModels({ credentials });
-    const provider = llmProviders.find(({ id }) => id === providerId);
-    if (provider) {
-      models.setProvider(provider);
-    }
-    await credentials.modify(providerId, async () => ({
-      type: "api_key",
-      key: keyOf(settings, envApiKeys, providerId),
-    }));
-    const model = models.getModel(providerId, ref.slice(ref.indexOf("/") + 1));
-    return model ? piDecide({ models, model }) : noOpinion;
+    const pi = await routerPi(settings, envApiKeys);
+    return pi ? piDecide(pi) : noOpinion;
   }
   const { url, apiKey, model } = settings.decide;
   return systemOneProvider({

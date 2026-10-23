@@ -159,6 +159,7 @@ export function createLiveServer({
   onTurn = null,
   onSpoken = null,
   onStored = null,
+  browserHistoryFrames,
   turnSettleMs,
   port,
   address,
@@ -181,6 +182,9 @@ export function createLiveServer({
   // After a doc's changes are saved (debounced), for a host that keeps a derived copy such as a
   // search index. A failure is logged and never blocks the save.
   onStored?: ((docName: string, document: Y.Doc) => Promise<void>) | null;
+  // Screenshots kept per browser and desktop for the frames history route, one per navigation and
+  // one per 10 s of change (default 500); a host that never reads them passes 0.
+  browserHistoryFrames?: number;
   turnSettleMs?: number;
   port: number;
   // Defaults to every interface; a host on a person's machine passes its loopback address.
@@ -188,7 +192,11 @@ export function createLiveServer({
   logger?: Logger;
 }) {
   const pool = new pg.Pool({ connectionString: databaseUrl });
-  const persistence = createPersistence({ pool, logger });
+  const persistence = createPersistence({
+    pool,
+    logger,
+    maxFramesPerDoc: browserHistoryFrames,
+  });
 
   const logEvent = (
     docName: string,
