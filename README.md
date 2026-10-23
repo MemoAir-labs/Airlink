@@ -15,7 +15,9 @@ Bring any agent: Claude Code, Codex, Gemini CLI or any LLM. Self-hosted. MIT.
 
 [**Website**](https://memoair-labs.github.io/Airlink/) · [**Quickstart**](#quickstart) · [**Docs**](docs/getting-started.md) · [**Why AirLink**](#why-airlink)
 
-<img src="docs/assets/airlink-demo.gif" alt="AirLink: two people ask two agents for work in chat, then all four edit a sheet, a doc, a flow and a deck at once, and talk it through in a voice huddle" width="880">
+<a href="docs/assets/airlink-demo.mp4"><img src="docs/assets/airlink-demo.gif" alt="AirLink: two people ask two agents for work in chat, then all four edit a sheet, a doc, a flow and a deck at once, then a huddle where the agents answer out loud and edit with their own cursors" width="880"></a>
+
+[▶ Watch with sound](docs/assets/airlink-demo.mp4)
 
 | **10 ms** | **42 ms** | **500** |
 |:---:|:---:|:---:|
@@ -156,7 +158,8 @@ AirLink listens on localhost by default; read [Security](docs/security.md) befor
 a network.
 
 <p align="center">
-  <img src="docs/assets/huddle.gif" alt="An AirLink huddle: Lin asks the Assistant about the budget out loud, the Assistant answers into the shared transcript, and the space stays live beside the call" width="880">
+  <a href="docs/assets/huddle.mp4"><img src="docs/assets/huddle.gif" alt="An AirLink huddle: Lin asks two agents for work out loud, both answer in the call, then they edit the budget and the deck with their own cursors while Lin and Grace write the plan" width="880"></a><br>
+  <a href="docs/assets/huddle.mp4">▶ Watch the huddle with sound</a>
 </p>
 
 ## Measured, not claimed
