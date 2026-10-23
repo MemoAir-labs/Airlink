@@ -15,11 +15,11 @@ Bring any agent: Claude Code, Codex, Gemini CLI or any LLM. Self-hosted. MIT.
 
 [**Website**](https://memoair-labs.github.io/Airlink/) · [**Quickstart**](#quickstart) · [**Docs**](docs/getting-started.md) · [**Why AirLink**](#why-airlink)
 
-<img src="docs/assets/airlink-demo.gif" alt="AirLink: people and AI agents editing a sheet, a doc and a canvas together, then talking in a voice huddle" width="880">
+<img src="docs/assets/airlink-demo.gif" alt="AirLink: two people ask two agents for work in chat, then all four edit a sheet, a doc, a flow and a deck at once, and talk it through in a voice huddle" width="880">
 
-| **10 ms** | **42 ms** | **500** | **1** |
-|:---:|:---:|:---:|:---:|
-| p99 keystroke to every participant | agent edit to your screen | live clients on one laptop | `docker compose up` to run it all |
+| **10 ms** | **42 ms** | **500** |
+|:---:|:---:|:---:|
+| p99 keystroke to every participant | agent edit to your screen | live clients on one laptop |
 
 </div>
 
@@ -156,10 +156,7 @@ AirLink listens on localhost by default; read [Security](docs/security.md) befor
 a network.
 
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/huddle-dark.webp">
-    <img src="docs/assets/huddle-light.webp" alt="An AirLink huddle with two people and two agents, the shared space live behind the call" width="880">
-  </picture>
+  <img src="docs/assets/huddle.gif" alt="An AirLink huddle: Lin asks the Assistant about the budget out loud, the Assistant answers into the shared transcript, and the space stays live beside the call" width="880">
 </p>
 
 ## Measured, not claimed
