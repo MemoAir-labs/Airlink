@@ -223,9 +223,13 @@ test("packs only the files git tracks, never what a local run left behind", () =
   const out = join(prepack, "templates");
   assert.ok(existsSync(join(out, "full/data/agents.json")));
   assert.ok(existsSync(join(out, "room-react/_env.example")));
-  assert.match(
-    readFileSync(join(out, "full/docker-compose.yml"), "utf8"),
-    /airlink:0\.1\.0/
+  const { version } = JSON.parse(
+    readFileSync(new URL("./package.json", import.meta.url), "utf8")
+  );
+  assert.ok(
+    readFileSync(join(out, "full/docker-compose.yml"), "utf8").includes(
+      `airlink:${version}`
+    )
   );
   assert.ok(!existsSync(join(out, "full/data/settings.json")));
   assert.ok(!existsSync(join(out, "room-react/.env.local")));
