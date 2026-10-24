@@ -1,6 +1,6 @@
 {
   "name": "@memo-air/client",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "license": "MIT",
   "private": false,
   "type": "module",
@@ -24,7 +24,7 @@
   },
   "dependencies": {
     "@hocuspocus/provider": "^4.7.0",
-    "@memo-air/protocol": "^0.1.0",
+    "@memo-air/protocol": "^0.2.0",
     "yjs": "^13.6.33"
   },
   "peerDependencies": {

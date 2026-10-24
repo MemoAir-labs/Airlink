@@ -4,6 +4,41 @@ All notable changes to AirLink are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.2.0] - 2026-10-24
+
+### Added
+
+- **Agents read the channel.** Every turn's prompt is rebuilt from what is stored: the channel's
+  running summary, the five latest messages from every person and agent, and up to three of the
+  agent's own memories that match what was said. Nothing is lost on a restart, and every agent
+  sees the others' replies.
+- **Channel summaries.** Once about 6,000 characters of chat pile up, the router's small model
+  rewrites the channel's summary in the background: decisions, open questions, owners, figures and
+  live objects, each citing the message id it came from.
+- **`search_room` and `read_chat`.** Keyword search over a channel's whole message history and the
+  text of its docs, sheets, slides, canvases and uploaded PDF, `.xlsx` and text files, from a
+  derived Postgres index kept current after every save; and paging through the chat around or
+  before any message.
+- **Scripts call the room's tools.** A `run_code` script imports `room` (Python) or `room.mjs`
+  (Node) and calls the agent's own tools by name. Calls go over a socket in the jail to the
+  runner's control server and back to AirLink, which runs them as the agent that wrote the code,
+  at most 50 a run; the jail's network fence is unchanged. A scheduled refresh calls them again,
+  so a dashboard pulls live room data.
+- **Reply mode per channel.** Auto, or only when an agent is `@`-mentioned (or named, in a huddle).
+- **Huddle voices** from Cartesia and Deepgram as well as ElevenLabs and OpenAI; a huddle stays
+  shut until agents have a voice.
+- **Onboarding Home** with setup steps and starter prompts, and drafted agent instructions in
+  Settings.
+- **live-server:** an `onStored` hook after each debounced save, and `browserHistoryFrames` to keep
+  fewer (or no) screenshot keyframes.
+
+### Changed
+
+- In Auto, chat routing leaves a message to people only when it is plainly addressed to another
+  person; small talk and questions no role covers go to the closest agent.
+- A runner reaches the channel's desktop only once it has a dashboard or a refresh schedule.
+- AirLink keeps no browser or desktop screenshot history; nothing read it.
+
 ## [0.1.0] - 2026-10-20
 
 ### Added

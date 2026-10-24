@@ -1,6 +1,6 @@
 {
   "name": "@memo-air/slides",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "license": "MIT",
   "private": false,
   "type": "module",
@@ -25,7 +25,7 @@
     "postpack": "node ../../scripts/postpack.mjs"
   },
   "dependencies": {
-    "@memo-air/richtext": "^0.1.0",
+    "@memo-air/richtext": "^0.2.0",
     "pptxgenjs": "4.0.1",
     "yjs": "^13.6.33"
   },

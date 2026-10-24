@@ -1,6 +1,6 @@
 {
   "name": "@memo-air/agent",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "license": "MIT",
   "private": false,
   "type": "module",
@@ -22,8 +22,8 @@
     "postpack": "node ../../scripts/postpack.mjs"
   },
   "dependencies": {
-    "@memo-air/decide": "^0.1.0",
-    "@memo-air/protocol": "^0.1.0",
-    "@memo-air/space": "^0.1.0"
+    "@memo-air/decide": "^0.2.0",
+    "@memo-air/protocol": "^0.2.0",
+    "@memo-air/space": "^0.2.0"
   }
 }

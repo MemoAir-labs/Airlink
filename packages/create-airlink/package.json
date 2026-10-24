@@ -1,6 +1,6 @@
 {
   "name": "create-airlink",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Create an AirLink app: npm create airlink@latest",
   "license": "MIT",
   "private": false,

@@ -1,6 +1,6 @@
 {
   "name": "@memo-air/voice",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "license": "MIT",
   "private": false,
   "type": "module",
@@ -37,11 +37,11 @@
     "@livekit/agents-plugin-openai": "1.9.3",
     "@livekit/local-inference": "0.2.7",
     "@livekit/rtc-node": "^1.1.0",
-    "@memo-air/agents": "^0.1.0",
+    "@memo-air/agents": "^0.2.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@memo-air/media": "^0.1.0",
+    "@memo-air/media": "^0.2.0",
     "vitest": "^4.0.16"
   }
 }
