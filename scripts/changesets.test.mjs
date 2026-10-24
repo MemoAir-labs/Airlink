@@ -51,6 +51,10 @@ function scratchCopy() {
 }
 
 test("a change to one package moves every published package together, and no private one", () => {
+  const [major, minor] = read(
+    join(liveRoot, "packages", "server", "package.json")
+  ).version.split(".");
+  const next = `${major}.${Number(minor) + 1}.0`;
   const dir = scratchCopy();
   try {
     writeFileSync(
@@ -68,13 +72,13 @@ test("a change to one package moves every published package together, and no pri
     assert.equal(published.length, 22);
     for (const path of published) {
       const manifest = read(join(dir, path, "package.json"));
-      assert.equal(manifest.version, "0.2.0", manifest.name);
+      assert.equal(manifest.version, next, manifest.name);
       for (const [name, range] of Object.entries({
         ...manifest.dependencies,
         ...manifest.devDependencies,
       })) {
         if (name.startsWith("@memo-air/")) {
-          assert.equal(range, "^0.2.0", `${manifest.name} → ${name}`);
+          assert.equal(range, `^${next}`, `${manifest.name} → ${name}`);
         }
       }
     }
@@ -94,7 +98,7 @@ test("a change to one package moves every published package together, and no pri
     assert.match(
       sectionOf(
         readFileSync(join(dir, "packages/server/CHANGELOG.md"), "utf8"),
-        "0.2.0"
+        next
       ),
       /A change\./
     );
