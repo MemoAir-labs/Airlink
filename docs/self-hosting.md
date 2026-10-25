@@ -171,5 +171,5 @@ docker compose -f apps/airlink/docker-compose.yml exec postgres createdb -U airl
 TEST_LIVE_DATABASE_URI=postgres://airlink:airlink@127.0.0.1:5434/airlink_test npm test
 ```
 
-The benchmark commands are in the README's [Measured latency](../README.md#measured-not-claimed)
+The benchmark commands are in the README's [Measured latency](../README.md#benchmarks)
 section.

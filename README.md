@@ -41,14 +41,14 @@ participant, human or AI, sees the same state at the same moment.
 <tr>
 <td width="50%" valign="top">
 
-### ✦ Agents that co-edit, live
+### Agents that co-edit, live
 Rich-text docs, spreadsheets with formulas, slide decks and an Excalidraw canvas. Agents edit
 with real cursors next to yours. Export to `.xlsx` and `.pptx`.
 
 </td>
 <td width="50%" valign="top">
 
-### 🖥 One screen, many drivers
+### One screen, many drivers
 A shared Chromium and a full Linux desktop, streamed over WebRTC. People and agents drive the
 same screen at the same time.
 
@@ -57,14 +57,14 @@ same screen at the same time.
 <tr>
 <td valign="top">
 
-### 🎙 Full-duplex voice
+### Full-duplex voice
 Start a huddle and agents listen, talk back in their own voice, and stop the moment you cut in.
 Long tasks run in the background and get reported back to the call.
 
 </td>
 <td valign="top">
 
-### 🔌 Bring any agent
+### Bring any agent
 Claude Code, Codex, Gemini CLI or opencode from your `PATH`, or any model from Anthropic,
 OpenAI, Google, OpenRouter, Groq, xAI, Mistral or DeepSeek. Plug any harness in over MCP.
 
@@ -73,14 +73,14 @@ OpenAI, Google, OpenRouter, Groq, xAI, Mistral or DeepSeek. Plug any harness in 
 <tr>
 <td valign="top">
 
-### 🛡 Agents with guardrails
+### Agents with guardrails
 Every agent gets its own scoped permissions per object. Prices, dates and commitments arrive as
 suggestions a person accepts, never as silent edits.
 
 </td>
 <td valign="top">
 
-### 🧠 Memory you can read
+### Memory you can read
 Each agent remembers in a folder of plain Markdown files you can open, edit and version, not a
 black-box vector store.
 
@@ -162,7 +162,7 @@ a network.
   <a href="docs/assets/huddle.mp4">▶ Watch the huddle with sound</a>
 </p>
 
-## Measured, not claimed
+## Benchmarks
 
 Real clients, real Yjs updates, real Chrome. Apple M3, one machine:
 
@@ -186,6 +186,20 @@ LIVE_JWT_SECRET=<secret> node src/video.ts --samples 20
 
 </details>
 
+## Status
+
+AirLink is young: v0.2.0, first public release in October 2026, and much of it was written with
+Claude Code. What to know before you run it:
+
+- There are no accounts yet. Anyone who can reach the server can join under any name, so keep it
+  on localhost or put your own auth in front of it. See [Security](docs/security.md).
+- One Docker desktop per server; set an E2B key for one desktop per object.
+- Voice needs a speech key (ElevenLabs or OpenAI). Without one, agents answer in chat.
+- One voice model, LiveKit's end-of-turn model, is under the LiveKit Model License, not MIT. See
+  [the notice](packages/voice/NOTICE-livekit-model-license.md).
+
+We build our own product, MemoAir, on these packages. AirLink itself stays MIT and self-hosted.
+
 ## Documentation
 
 [Getting started](docs/getting-started.md) ·
@@ -201,8 +215,6 @@ LIVE_JWT_SECRET=<secret> node src/video.ts --samples 20
 
 Issues and pull requests are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md) and the
 [Code of Conduct](CODE_OF_CONDUCT.md); report vulnerabilities through [SECURITY.md](SECURITY.md).
-
-If AirLink is useful to you, a ⭐ helps other people find it.
 
 ## Licence
 

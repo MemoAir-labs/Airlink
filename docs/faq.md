@@ -43,10 +43,10 @@ Not yet. A code runner object for live dashboards is being built. Today agents w
 sheets, slides, canvases, the shared browser and the desktop.
 
 **Can I use the packages in my own app?**
-Not from npm yet: every package is private and unpublished. You can use them from this repository's
-workspaces; `@memo-air/react` draws the views behind a `LiveHost` contract your app implements,
-and `@memo-air/client` joins a room from any client. Published packages and starter templates are
-coming.
+Yes. The packages are on npm under `@memo-air` (v0.2.0). `npm create airlink@latest my-app full`
+scaffolds a React room, a Node agent or the full stack (`room-react`, `agent-node`, `full`).
+`@memo-air/react` draws the views behind a `LiveHost` contract your app implements, and
+`@memo-air/client` joins a room from any client.
 
 **Is there a browser extension, mobile app or meeting bot?**
 No.
@@ -57,4 +57,4 @@ one per object on E2B. See [desktop.md](desktop.md).
 
 **How fast is it?**
 Keystroke fan-out p99 10 ms on one laptop, 9–48 ms with 500 sockets. The table and the commands to
-rerun it are in the [README](../README.md#measured-not-claimed).
+rerun it are in the [README](../README.md#benchmarks).
