@@ -198,7 +198,7 @@ Claude Code. What to know before you run it:
 - One voice model, LiveKit's end-of-turn model, is under the LiveKit Model License, not MIT. See
   [the notice](packages/voice/NOTICE-livekit-model-license.md).
 
-We build our own product, MemoAir, on these packages. AirLink itself stays MIT and self-hosted.
+We build our own product, [MemoAir](https://memoair.ai/?utm_source=github&utm_medium=readme&utm_campaign=airlink), on these packages. AirLink itself stays MIT and self-hosted.
 
 ## Documentation
 
@@ -210,6 +210,12 @@ We build our own product, MemoAir, on these packages. AirLink itself stays MIT a
 [Self-hosting](docs/self-hosting.md) ·
 [Security](docs/security.md) ·
 [FAQ](docs/faq.md)
+
+## Community and support
+
+- Questions and ideas: [GitHub Discussions](https://github.com/MemoAir-labs/Airlink/discussions)
+- Bugs: [open an issue](https://github.com/MemoAir-labs/Airlink/issues/new/choose)
+- Want help running AirLink for your team? Email [hardik.aggarwal@memoair.ai](mailto:hardik.aggarwal@memoair.ai) or see [memoair.ai](https://memoair.ai/?utm_source=github&utm_medium=readme&utm_campaign=airlink).
 
 ## Contributing
 
