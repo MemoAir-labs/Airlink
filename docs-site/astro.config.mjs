@@ -56,6 +56,10 @@ export default defineConfig({
           link: "https://memoair-labs.github.io/Airlink/",
         },
         {
+          label: "Built by MemoAir",
+          link: "https://memoair.ai/?utm_source=airlink-docs&utm_medium=sidebar&utm_campaign=airlink",
+        },
+        {
           label: "Start",
           items: [
             { label: "Introduction", link: "/" },
