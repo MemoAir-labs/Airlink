@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Questions and ideas
+    url: https://github.com/MemoAir-labs/Airlink/discussions
+    about: Ask how to run AirLink, or share what you're building with it.
+  - name: Help running AirLink for your team
+    url: https://memoair.ai/?utm_source=github&utm_medium=issue-chooser&utm_campaign=airlink
+    about: Talk to MemoAir, the team that builds AirLink.
+  - name: Report a security vulnerability
+    url: https://github.com/MemoAir-labs/Airlink/security/advisories/new
+    about: Please report vulnerabilities privately, not as public issues.
