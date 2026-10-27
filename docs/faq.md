@@ -15,7 +15,8 @@ Only what goes to the providers you configure: your LLM provider, your speech pr
 your Postgres.
 
 **Is there a hosted version?**
-No. AirLink runs on your machine or your server.
+No. AirLink runs on your machine or your server. For help running it for your team, talk to
+[MemoAir](https://memoair.ai/?utm_source=github&utm_medium=docs&utm_campaign=airlink), the team that builds it.
 
 **Can people on other machines join?**
 Yes, with `AIRLINK_HOST=0.0.0.0`, but there are no accounts: anyone who reaches it can join under
