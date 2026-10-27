@@ -768,7 +768,14 @@ const faqs: [string, ReactNode][] = [
   ],
   [
     "Is there a hosted version?",
-    "No. AirLink runs on your machine or your server.",
+    <>
+      No. AirLink runs on your machine or your server. For help running it for
+      your team, talk to{" "}
+      <a href="https://memoair.ai/?utm_source=airlink-site&utm_medium=faq&utm_campaign=airlink">
+        MemoAir
+      </a>
+      , the team that builds it.
+    </>,
   ],
   [
     "Can people on other machines join?",
@@ -788,7 +795,11 @@ const faqs: [string, ReactNode][] = [
   ],
   [
     "Can I use the packages in my own app?",
-    "Not from npm yet: every package is private and unpublished. You can use them from the repository's workspaces. Published packages and starter templates are coming.",
+    <>
+      Yes. They are on npm under <code>@memo-air/*</code>, and{" "}
+      <code>npm create airlink@latest</code> scaffolds a React room, a Node
+      agent or the full stack.
+    </>,
   ],
 ];
 
