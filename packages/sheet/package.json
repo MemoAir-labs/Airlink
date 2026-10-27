@@ -2,6 +2,7 @@
   "name": "@memo-air/sheet",
   "version": "0.2.0",
   "license": "MIT",
+  "author": "MemoAir (https://memoair.ai)",
   "private": false,
   "type": "module",
   "sideEffects": false,

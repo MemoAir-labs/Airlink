@@ -3,6 +3,7 @@
   "version": "0.2.0",
   "description": "Create an AirLink app: npm create airlink@latest",
   "license": "MIT",
+  "author": "MemoAir (https://memoair.ai)",
   "private": false,
   "type": "module",
   "bin": {
