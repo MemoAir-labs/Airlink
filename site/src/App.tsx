@@ -844,7 +844,13 @@ function Footer({ docs }: { docs: string }) {
       <div className="wrap footer-inner">
         <div>
           <Brand />
-          <small>MIT licensed. Pre-release: packages are not on npm yet.</small>
+          <small>
+            MIT licensed. Built by{" "}
+            <a href="https://memoair.ai/?utm_source=airlink-site&utm_medium=footer&utm_campaign=airlink">
+              MemoAir
+            </a>
+            .
+          </small>
         </div>
         <nav aria-label="Footer">
           <ul>
@@ -862,6 +868,9 @@ function Footer({ docs }: { docs: string }) {
             </li>
             <li>
               <a href={`${repo}/blob/main/SECURITY.md`}>Security</a>
+            </li>
+            <li>
+              <a href={`${repo}/discussions`}>Discussions</a>
             </li>
           </ul>
         </nav>
@@ -923,8 +932,7 @@ function PlusIcon() {
 
 function LockIcon() {
   return (
-    <svg {...icon} className="lock">
-      <rect x="4" y="11" width="16" height="10" rx="2" />
+site: link MemoAir and Discussions in the footer      <rect x="4" y="11" width="16" height="10" rx="2" />
       <path d="M8 11V7a4 4 0 0 1 8 0v4" />
     </svg>
   );
