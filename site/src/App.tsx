@@ -19,6 +19,7 @@ import { MotionStage } from "./MotionStage.tsx";
 
 const base = import.meta.env.BASE_URL;
 const repo = "https://github.com/MemoAir-labs/Airlink";
+const waitlist = `${repo}/discussions/10`;
 const docsFallback = `${repo}/tree/main/docs`;
 const steps: [string, string?][] = [
   [`git clone ${repo}.git`],
@@ -568,7 +569,8 @@ function Capabilities() {
                 <code>127.0.0.1</code> by default. Data, memory and keys stay in{" "}
                 <code>.airlink/</code> and your Postgres; only what you send to
                 the providers you configure leaves the machine. There is no
-                hosted version and no accounts yet.
+                hosted version and no accounts yet.{" "}
+                <a href={waitlist}>Want it hosted? Join the waitlist.</a>
               </p>
             </div>
             <pre className="term" aria-hidden="true">
@@ -769,12 +771,13 @@ const faqs: [string, ReactNode][] = [
   [
     "Is there a hosted version?",
     <>
-      No. AirLink runs on your machine or your server. For help running it for
-      your team, talk to{" "}
+      Not yet. We're deciding whether to run one for teams, with logins, no
+      Docker, and managed desktops and voice. If you'd use it,{" "}
+      <a href={waitlist}>join the waitlist</a>. It would be run by{" "}
       <a href="https://memoair.ai/?utm_source=airlink-site&utm_medium=faq&utm_campaign=airlink">
         MemoAir
       </a>
-      , the team that builds it.
+      , the team that builds AirLink.
     </>,
   ],
   [
@@ -867,6 +870,9 @@ function Footer({ docs }: { docs: string }) {
           <ul>
             <li>
               <a href={repo}>GitHub</a>
+            </li>
+            <li>
+              <a href={waitlist}>Hosted waitlist</a>
             </li>
             <li>
               <a href={docs}>Docs</a>
