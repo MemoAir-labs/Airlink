@@ -13,7 +13,7 @@ Bring any agent: Claude Code, Codex, Gemini CLI or any LLM. Self-hosted. MIT.
 [![npm](https://img.shields.io/npm/v/create-airlink.svg?label=npm%20create%20airlink)](https://www.npmjs.com/package/create-airlink)
 [![Node 24](https://img.shields.io/badge/node-24-brightgreen.svg)](.nvmrc)
 
-[**Website**](https://memoair-labs.github.io/Airlink/) · [**Quickstart**](#quickstart) · [**Docs**](docs/getting-started.md) · [**Why AirLink**](#why-airlink)
+[**Website**](https://memoair-labs.github.io/Airlink/) · [**Quickstart**](#quickstart) · [**Docs**](docs/getting-started.md) · [**Why AirLink**](#why-airlink) · [**Hosted waitlist**](https://github.com/MemoAir-labs/Airlink/discussions/10)
 
 <a href="docs/assets/airlink-demo.mp4"><img src="docs/assets/airlink-demo.gif" alt="AirLink: two people ask two agents for work in chat, then all four edit a sheet, a doc, a flow and a deck at once, then a huddle where the agents answer out loud and edit with their own cursors" width="880"></a>
 
@@ -157,6 +157,9 @@ Full setup and optional services are in [Getting started](docs/getting-started.m
 AirLink listens on localhost by default; read [Security](docs/security.md) before opening it to
 a network.
 
+> **Want it hosted for your team instead?** Logins and invites, no Docker, managed desktops and
+> voice. We'll build it if enough teams ask: [join the hosted waitlist](https://github.com/MemoAir-labs/Airlink/discussions/10).
+
 <p align="center">
   <a href="docs/assets/huddle.mp4"><img src="docs/assets/huddle.gif" alt="An AirLink huddle: Lin asks two agents for work out loud, both answer in the call, then they edit the budget and the deck with their own cursors while Lin and Grace write the plan" width="880"></a><br>
   <a href="docs/assets/huddle.mp4">▶ Watch the huddle with sound</a>
@@ -198,7 +201,8 @@ Claude Code. What to know before you run it:
 - One voice model, LiveKit's end-of-turn model, is under the LiveKit Model License, not MIT. See
   [the notice](packages/voice/NOTICE-livekit-model-license.md).
 
-We build our own product, [MemoAir](https://memoair.ai/?utm_source=github&utm_medium=readme&utm_campaign=airlink), on these packages. AirLink itself stays MIT and self-hosted.
+We build our own product, [MemoAir](https://memoair.ai/?utm_source=github&utm_medium=readme&utm_campaign=airlink), on these packages. AirLink itself stays MIT and self-hosted. If you'd want a hosted version for
+your team, [join the waitlist](https://github.com/MemoAir-labs/Airlink/discussions/10).
 
 ## Documentation
 
@@ -215,7 +219,8 @@ We build our own product, [MemoAir](https://memoair.ai/?utm_source=github&utm_me
 
 - Questions and ideas: [GitHub Discussions](https://github.com/MemoAir-labs/Airlink/discussions)
 - Bugs: [open an issue](https://github.com/MemoAir-labs/Airlink/issues/new/choose)
-- Want help running AirLink for your team? Email [hardik.aggarwal@memoair.ai](mailto:hardik.aggarwal@memoair.ai) or see [memoair.ai](https://memoair.ai/?utm_source=github&utm_medium=readme&utm_campaign=airlink).
+- Want AirLink hosted for your team? [Join the waitlist](https://github.com/MemoAir-labs/Airlink/discussions/10).
+- Want help running it yourself? Email [hardik.aggarwal@memoair.ai](mailto:hardik.aggarwal@memoair.ai) or see [memoair.ai](https://memoair.ai/?utm_source=github&utm_medium=readme&utm_campaign=airlink).
 
 ## Contributing
 
