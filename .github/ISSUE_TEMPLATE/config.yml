@@ -3,6 +3,9 @@ contact_links:
   - name: Questions and ideas
     url: https://github.com/MemoAir-labs/Airlink/discussions
     about: Ask how to run AirLink, or share what you're building with it.
+  - name: Hosted AirLink waitlist
+    url: https://github.com/MemoAir-labs/Airlink/discussions/10
+    about: Want AirLink hosted for your team, with logins and no Docker? Upvote to join.
   - name: Help running AirLink for your team
     url: https://memoair.ai/?utm_source=github&utm_medium=issue-chooser&utm_campaign=airlink
     about: Talk to MemoAir, the team that builds AirLink.
