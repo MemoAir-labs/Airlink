@@ -101,6 +101,23 @@ npm start                       # NODE_ENV=production, serves dist/ from the sam
 
 ## Troubleshooting
 
+- **`docker compose up -d` fails.** "Cannot connect to the Docker daemon" or "error during
+  connect" means Docker is not running — start Docker Desktop, OrbStack or Colima first.
+  `docker: 'compose' is not a docker command`, or a `docker-compose.yml` validation error, means
+  the install is too old for Compose V2: update it.
+- **`npm run dev` exits before the app starts.** The Node version is too old: the server runs
+  TypeScript directly with Node's type stripping, so older versions fail with
+  `ERR_UNKNOWN_FILE_EXTENSION` or a `bad option` error. Install Node 24 — `.nvmrc` pins it, so
+  `nvm use` in the repository root is enough.
+- **Port 3030 or 3020 already in use.** `EADDRINUSE` means something else holds the port: the app
+  binds `AIRLINK_PORT` (3030), its live socket `AIRLINK_LIVE_PORT` (3031) and a standalone
+  live-server `PORT` (3020). Stop what is on it, or change the port in `.env`;
+  [self-hosting.md](self-hosting.md) lists them all.
+- **An agent answers "I have no anthropic key yet", or stops before finishing.** The key is for a
+  provider the default model does not use — the default is `anthropic/claude-haiku-5-5` — or it was
+  pasted incomplete. Add the full key under its provider in Settings or `.env`, pick a model that
+  provider offers, and ask again; `bridge: turn failed` in the server log carries the provider's
+  own error.
 - **The page loads but agents never answer.** No key is set, or the key's provider does not match
   the default model in Settings. The server log line `airlink: agents ready` lists the harnesses it
   built and any error.
