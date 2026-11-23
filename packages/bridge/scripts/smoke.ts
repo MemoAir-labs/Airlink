@@ -18,8 +18,11 @@ import {
 } from "../src/index.ts";
 
 // Drives the bridge against a running live-server with real models: a channel and a sheet, Pi
-// asked to fill the sheet, and — when Claude Code is on PATH — Claude asked to read it back over
-// ACP, then Pi asked to remember a contact and Claude to recall it from the folder they share. Needs LIVE_JWT_SECRET and ANTHROPIC_API_KEY; LIVE_URL defaults to the dev live-server.
+// asked to fill the sheet, and — when an ACP CLI is on PATH — an agent on it asked to read it
+// back over ACP, then Pi asked to remember a contact and the ACP agent to recall it from the
+// folder they share. Needs LIVE_JWT_SECRET and ANTHROPIC_API_KEY; LIVE_URL defaults to the dev
+// live-server. ACP_HARNESS picks the harness by id (claude, codex, gemini, opencode, goose);
+// unset, the first one found on PATH is used.
 
 const liveUrl = process.env.LIVE_URL ?? "http://localhost:3020";
 const jwtSecret = process.env.LIVE_JWT_SECRET ?? "";
@@ -65,13 +68,20 @@ if (!model) {
 }
 const mcp = serveRoomMcp();
 await mcp.listen();
-const claude = (await detectHarnesses()).find((found) => found.id === "claude");
+const detected = await detectHarnesses();
+const wanted = process.env.ACP_HARNESS;
+const acp = wanted
+  ? detected.find((found) => found.id === wanted)
+  : detected.at(0);
+if (wanted && !acp) {
+  say(`ACP_HARNESS=${wanted} is not on PATH; running Pi only.`);
+}
 const harnesses: Record<string, Harness> = {
   pi: piHarness({ model, streamFn: models.streamSimple.bind(models) }),
-  ...(claude
+  ...(acp
     ? {
-        claude: acpHarness({
-          command: claude.command,
+        [acp.id]: acpHarness({
+          command: acp.command,
           cwd: mkdtempSync(join(tmpdir(), "airlink-smoke-")),
           mcp,
         }),
@@ -89,15 +99,15 @@ const agents: AgentConfig[] = [
 
     memoryDir: "team",
   },
-  ...(claude
+  ...(acp
     ? [
         {
-          id: "claude",
-          name: "Claude",
+          id: acp.id,
+          name: acp.name,
           role: "Reviews what is in the room.",
           tags: [],
           access: "write" as const,
-          harness: "claude",
+          harness: acp.id,
           memoryDir: "team",
         },
       ]
@@ -151,15 +161,18 @@ await ask(
   "@Pi add three vendors with prices to the Vendors sheet, then a Total row with a SUM formula.",
   "pi"
 );
-if (claude) {
-  await ask("@Claude read the Vendors sheet and tell me the total.", "claude");
+if (acp) {
+  await ask(
+    `@${acp.name} read the Vendors sheet and tell me the total.`,
+    acp.id
+  );
 }
 await ask(
   "@Pi please remember for later: Acme's pricing contact is Dana Ruiz, dana@acme.test.",
   "pi"
 );
-if (claude) {
-  await ask("@Claude who is Acme's pricing contact?", "claude");
+if (acp) {
+  await ask(`@${acp.name} who is Acme's pricing contact?`, acp.id);
 }
 mcp.close();
 say(`[memory] ${readdirSync(join(memoryRoot, "team")).join(", ")}`);

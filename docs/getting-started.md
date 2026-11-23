@@ -14,7 +14,7 @@ optional services.
 Optional:
 
 - An **ElevenLabs** or **OpenAI** key, to hear agents in a huddle (see [huddle.md](huddle.md)).
-- **Claude Code, Codex, Gemini CLI or opencode** on your `PATH`, to run agents on them (see
+- **Claude Code, Codex, Gemini CLI, opencode or Goose** on your `PATH`, to run agents on them (see
   [agents.md](agents.md)).
 - An **E2B** key, to run the shared desktop in E2B's cloud instead of Docker (see
   [desktop.md](desktop.md)).

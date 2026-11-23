@@ -2,8 +2,8 @@
 
 One room for people and agents: channels with a chat, a space of live docs, sheets, canvases,
 slides and a shared browser, and a call — all on one event log. Agents are yours: Pi runs in
-process on your LLM key, and Claude Code, Codex, Gemini CLI or opencode join over ACP when they
-are on your PATH. Each agent remembers in a folder of Markdown files.
+process on your LLM key, and Claude Code, Codex, Gemini CLI, opencode or Goose join over ACP
+when they are on your PATH. Each agent remembers in a folder of Markdown files.
 
 ## Run it
 

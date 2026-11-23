@@ -325,8 +325,8 @@ function SettingsForm({ onSaved }: { onSaved: () => void }) {
           >
             {detected.length === 0 && (
               <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                None found on PATH (Claude Code, Codex, Gemini CLI, opencode).
-                Pi is always available.
+                None found on PATH (Claude Code, Codex, Gemini CLI, opencode,
+                Goose). Pi is always available.
               </p>
             )}
             {detected.map((found) => (

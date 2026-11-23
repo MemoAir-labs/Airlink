@@ -65,7 +65,7 @@ Long tasks run in the background and get reported back to the call.
 <td valign="top">
 
 ### Bring any agent
-Claude Code, Codex, Gemini CLI or opencode from your `PATH`, or any model from Anthropic,
+Claude Code, Codex, Gemini CLI, opencode or Goose from your `PATH`, or any model from Anthropic,
 OpenAI, Google, OpenRouter, Groq, xAI, Mistral or DeepSeek. Plug any harness in over MCP.
 
 </td>

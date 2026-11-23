@@ -53,6 +53,7 @@ AirLink runs no agent loop of its own. A harness runs the agent.
   | Codex | `codex` | `npx -y @agentclientprotocol/codex-acp@2.2.2` |
   | Gemini CLI | `gemini` | `gemini --acp` |
   | opencode | `opencode` | `opencode acp` |
+  | Goose | `goose` | `goose acp` |
 
   An ACP harness gets the room's tools from a loopback MCP server the bridge serves
   (`serveRoomMcp`). Its own tools (shell, file writes on your machine) are refused. One that exits
@@ -60,10 +61,44 @@ AirLink runs no agent loop of its own. A harness runs the agent.
   Claude Code or Codex agent waits while `npx` fetches the adapter.
 
 Turn a harness on in Settings, then set an agent's `harness` to its id (`claude`, `codex`,
-`gemini`, `opencode`).
+`gemini`, `opencode`, `goose`).
 
 `node packages/bridge/scripts/smoke.ts` drives Pi and an ACP harness against a running live-server
-(`LIVE_URL`, `LIVE_JWT_SECRET`, `ANTHROPIC_API_KEY`).
+(`LIVE_URL`, `LIVE_JWT_SECRET`, `ANTHROPIC_API_KEY`). `ACP_HARNESS` picks which detected harness
+the ACP half of the run uses; unset, it takes the first one found.
+
+### Example: wiring up Goose
+
+[Goose](https://github.com/aaif-goose/goose) is an open-source CLI agent whose `acp` subcommand
+serves ACP over stdio. It rides the same path as every row above: one entry in `knownHarnesses`
+(`packages/bridge/src/detect.ts`) holds its id, the binary to find on `PATH` and the command that
+starts its ACP mode. To run an agent on it:
+
+1. Install the goose CLI so `goose` is on your `PATH`, and sign it in to a provider
+   (`goose configure`).
+2. Settings → Harnesses offers **Goose** once `detectHarnesses` finds the binary; turn it on.
+3. Give an agent the harness — in Settings → Agents, or as an entry in `.airlink/agents.json`:
+
+   ```json
+   [
+     {
+       "id": "goose",
+       "name": "Goose",
+       "role": "Reads sheets and docs and reports what is in them.",
+       "access": "suggest",
+       "harness": "goose"
+     }
+   ]
+   ```
+
+4. `@Goose what is in the Vendors sheet?` AirLink spawns `goose acp`, hands it the room's tools
+   over the loopback MCP server and posts the reply. Goose's own developer tools — shell, file
+   edits — are refused like every harness's.
+
+`ACP_HARNESS=goose node packages/bridge/scripts/smoke.ts` runs the smoke script's
+sheet-and-memory round trip on Goose instead of the first harness found. Goose keeps credentials
+in the system keyring: on a headless run set `GOOSE_DISABLE_KEYRING=1` and a provider key such as
+`OPENAI_API_KEY` in AirLink's environment, or the ACP process can block on a keychain prompt.
 
 ## Routing
 
