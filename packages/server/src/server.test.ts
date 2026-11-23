@@ -1670,6 +1670,254 @@ describe.skipIf(!databaseUrl)("live server", () => {
       await waitFor(() => docFailed);
     });
   });
+
+  describe("token scope", () => {
+    const scopeDoc = `test:${crypto.randomUUID()}`;
+    const otherDoc = `test:${crypto.randomUUID()}`;
+    const eve = { kind: "agent" as const, id: "eve", name: "Eve" };
+    const hana = { kind: "human" as const, id: "hana", name: "Hana" };
+    const docToken = (
+      actor: typeof eve | typeof hana,
+      access: LiveAccess,
+      docName = scopeDoc,
+      secret = jwtSecret,
+      expiresInSeconds?: number
+    ) =>
+      signLiveToken(
+        { actor, workspaceId: "w1", docName, access },
+        secret,
+        expiresInSeconds
+      );
+    const docUrl = (path: string, docName = scopeDoc) =>
+      `${url.replace("ws", "http")}/v1/docs/${encodeURIComponent(docName)}/${path}`;
+    const getDoc = (path: string, token: string | null, docName = scopeDoc) =>
+      fetch(
+        docUrl(path, docName),
+        token ? { headers: { Authorization: `Bearer ${token}` } } : {}
+      );
+    const postDoc = (path: string, token: string | null) =>
+      fetch(docUrl(path), {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+
+    it("lets a token read and write inside its scope", async () => {
+      const baseUrl = url.replace("ws", "http");
+      for (const path of ["outline", "markdown", "history"]) {
+        expect((await getDoc(path, docToken(eve, "read"))).status, path).toBe(
+          200
+        );
+      }
+      expect((await getDoc("outline", docToken(hana, "read"))).status).toBe(
+        200
+      );
+
+      const writer = createLiveAgentClient({
+        baseUrl,
+        docName: scopeDoc,
+        token: docToken(eve, "write"),
+      });
+      const written = await writer.ops({
+        ops: [{ type: "insert", afterBlockId: null, markdown: "Scoped." }],
+      });
+      expect(written.results).toMatchObject([{ ok: true }]);
+      expect(written.suggestionId).toBeNull();
+      const reader = createLiveAgentClient({
+        baseUrl,
+        docName: scopeDoc,
+        token: docToken(hana, "read"),
+      });
+      expect(
+        (await reader.outline()).blocks.map((block) => block.text)
+      ).toContain("Scoped.");
+
+      const proposer = createLiveAgentClient({
+        baseUrl,
+        docName: scopeDoc,
+        token: docToken(eve, "suggest"),
+      });
+      const proposed = await proposer.ops({
+        ops: [{ type: "insert", afterBlockId: null, markdown: "Proposed." }],
+        approver: "Hana",
+        approverId: "hana",
+      });
+      expect(proposed.suggestionId).toEqual(expect.any(String));
+    });
+
+    it("refuses a read token's writes on every route", async () => {
+      const reader = docToken(eve, "read");
+      for (const path of [
+        "ops",
+        "sheet-ops",
+        "canvas-ops",
+        "slides-ops",
+        "chat-ops",
+        "space-ops",
+        "browser-ops",
+        "desktop-ops",
+        "comments",
+        "restore",
+        "transcript",
+        "speak",
+      ]) {
+        expect((await postDoc(path, reader)).status, path).toBe(403);
+      }
+      // `suggest` may propose anywhere but cannot write the doc back.
+      expect((await postDoc("restore", docToken(eve, "suggest"))).status).toBe(
+        403
+      );
+      // Agent routes refuse a person outright, whatever the access.
+      for (const path of ["ops", "speak"]) {
+        expect(
+          (await postDoc(path, docToken(hana, "write"))).status,
+          path
+        ).toBe(403);
+      }
+    });
+
+    it("refuses a token minted for another object", async () => {
+      const foreign = docToken(eve, "write", otherDoc);
+      for (const path of [
+        "outline",
+        "markdown",
+        "history",
+        "sheet",
+        "xlsx",
+        "canvas",
+        "chat",
+        "space",
+        "deck",
+        "pptx",
+        "browser",
+        "desktop",
+        "transcript",
+        "frames",
+        "versions/0",
+        "frames/0",
+      ]) {
+        expect((await getDoc(path, foreign)).status, path).toBe(401);
+      }
+      for (const path of [
+        "ops",
+        "sheet-ops",
+        "canvas-ops",
+        "slides-ops",
+        "chat-ops",
+        "space-ops",
+        "browser-ops",
+        "desktop-ops",
+        "comments",
+        "restore",
+        "transcript",
+        "speak",
+        "browser-video",
+        "media-token",
+      ]) {
+        expect((await postDoc(path, foreign)).status, path).toBe(401);
+      }
+      // The same token still opens the object it was minted for.
+      expect((await getDoc("outline", foreign, otherDoc)).status).toBe(200);
+    });
+
+    it("refuses expired, forged, missing and other-kind tokens", async () => {
+      const expired = docToken(eve, "write", scopeDoc, jwtSecret, -1);
+      expect((await getDoc("outline", expired)).status).toBe(401);
+      expect((await postDoc("ops", expired)).status).toBe(401);
+
+      const forged = docToken(eve, "write", scopeDoc, "other-secret");
+      expect((await getDoc("outline", forged)).status).toBe(401);
+      expect((await getDoc("outline", "not-a-token")).status).toBe(401);
+      expect((await getDoc("outline", null)).status).toBe(401);
+
+      // Other token kinds stay in their own scope: a service token reads only
+      // summaries, a watch token only its watch channel.
+      expect(
+        (await getDoc("outline", signLiveServiceToken("w1", jwtSecret))).status
+      ).toBe(401);
+      expect(
+        (
+          await getDoc(
+            "outline",
+            signLiveWatchToken(
+              {
+                watchId: crypto.randomUUID(),
+                workspaceId: "w1",
+                actor: hana,
+                docNames: [scopeDoc],
+              },
+              jwtSecret
+            )
+          )
+        ).status
+      ).toBe(401);
+      // A doc token is no service token either.
+      expect(
+        (
+          await fetch(`${url.replace("ws", "http")}/v1/summaries`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${docToken(eve, "write")}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ docNames: [scopeDoc] }),
+          })
+        ).status
+      ).toBe(401);
+    });
+
+    it("refuses expired, forged and doc tokens on the live socket", async () => {
+      for (const token of [
+        docToken(eve, "write", scopeDoc, jwtSecret, -1),
+        docToken(eve, "write", scopeDoc, "other-secret"),
+      ]) {
+        const provider = new HocuspocusProvider({
+          url,
+          name: scopeDoc,
+          document: new Y.Doc(),
+          token,
+        });
+        providers.push(provider);
+        let failed = false;
+        provider.on("authenticationFailed", () => {
+          failed = true;
+        });
+        await waitFor(() => failed);
+        expect(provider.synced).toBe(false);
+      }
+
+      // A doc token cannot sit on a watch channel either.
+      const watcher = new HocuspocusProvider({
+        url,
+        name: `watch:${crypto.randomUUID()}`,
+        document: new Y.Doc(),
+        token: docToken(eve, "write"),
+      });
+      providers.push(watcher);
+      let watchFailed = false;
+      watcher.on("authenticationFailed", () => {
+        watchFailed = true;
+      });
+      await waitFor(() => watchFailed);
+      expect(watcher.synced).toBe(false);
+    });
+
+    it("drops a suggest token's socket writes like a read token's", async () => {
+      const suggestDoc = `test:${crypto.randomUUID()}`;
+      const provider = new HocuspocusProvider({
+        url,
+        name: suggestDoc,
+        document: new Y.Doc(),
+        token: docToken(eve, "suggest", suggestDoc),
+      });
+      providers.push(provider);
+      await waitFor(() => provider.synced);
+
+      provider.document.getText("t").insert(0, "sneaky");
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      const serverDoc = live.hocuspocus.documents.get(suggestDoc);
+      expect(serverDoc?.getText("t").toString()).toBe("");
+    });
+  });
 });
 
 const cdpUrl = process.env.TEST_CDP_URL;
