@@ -396,11 +396,12 @@ function Capabilities() {
                 <li>Codex</li>
                 <li>Gemini CLI</li>
                 <li>opencode</li>
+                <li>Goose</li>
               </ul>
               <Ticks
                 items={[
                   "Keys for Anthropic, OpenAI, Google, OpenRouter, Groq, xAI, Mistral or DeepSeek; each agent picks its own model",
-                  "Claude Code, Codex, Gemini CLI and opencode run over ACP when they are on your PATH",
+                  "Claude Code, Codex, Gemini CLI, opencode and Goose run over ACP when they are on your PATH",
                   <>
                     A person's edits can earn an agent an unprompted turn{" "}
                     <Coming>Scheduled agents coming</Coming>

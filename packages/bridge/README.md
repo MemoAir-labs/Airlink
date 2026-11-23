@@ -9,7 +9,7 @@ goes to live-server under a token signed for that agent and that object, capped 
 - `createBridge({ liveUrl, jwtSecret, agents, decide, harnesses, room, memoryRoot, logger })` —
   returns `onTurn`, `work` (a huddle's task on the agent's harness) and `post`.
 - `piHarness`, `piDecide` — Pi in process, and a chat model as a decision node.
-- `acpHarness`, `detectHarnesses` — Claude Code, Codex, Gemini CLI and opencode over ACP.
+- `acpHarness`, `detectHarnesses` — Claude Code, Codex, Gemini CLI, opencode and Goose over ACP.
 - `serveRoomMcp` — the loopback MCP server that gives ACP harnesses the room's tools.
 - `agentMemory(memoryRoot, agent)` — an agent's OKF folder and store.
 - Types: `Harness`, `BridgeRoom`, `BridgeTurn`, `Bridge`.

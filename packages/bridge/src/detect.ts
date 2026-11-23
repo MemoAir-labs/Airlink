@@ -29,6 +29,12 @@ const knownHarnesses = [
     bin: "opencode",
     command: ["opencode", "acp"],
   },
+  {
+    id: "goose",
+    name: "Goose",
+    bin: "goose",
+    command: ["goose", "acp"],
+  },
 ];
 
 export type DetectedHarness = { id: string; name: string; command: string[] };

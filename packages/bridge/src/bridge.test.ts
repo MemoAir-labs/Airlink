@@ -1150,9 +1150,11 @@ describe("detectHarnesses", () => {
   it("offers a harness only when its CLI is on the path", async () => {
     const dir = mkdtempSync(join(tmpdir(), "bridge-path-"));
     writeFileSync(join(dir, "gemini"), "#!/bin/sh\n", { mode: 0o755 });
+    writeFileSync(join(dir, "goose"), "#!/bin/sh\n", { mode: 0o755 });
     writeFileSync(join(dir, "codex"), "not executable", { mode: 0o644 });
     expect(await detectHarnesses(dir)).toEqual([
       { id: "gemini", name: "Gemini CLI", command: ["gemini", "--acp"] },
+      { id: "goose", name: "Goose", command: ["goose", "acp"] },
     ]);
   });
 });

@@ -6,7 +6,7 @@ Docker, Node 24 and one LLM key. See [getting-started.md](getting-started.md).
 **Which models can agents use?**
 Pi, the in-process harness, takes keys for Anthropic, OpenAI, Google, OpenRouter, Groq, xAI,
 Mistral and DeepSeek, and each agent can pick its own model. Agents can also run on Claude Code,
-Codex, Gemini CLI or opencode over ACP, using whatever those tools are signed in to. See
+Codex, Gemini CLI, opencode or Goose over ACP, using whatever those tools are signed in to. See
 [agents.md](agents.md).
 
 **Does anything leave my machine?**
