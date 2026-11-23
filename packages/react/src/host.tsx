@@ -9,6 +9,7 @@ import type {
 } from "@memo-air/protocol";
 import type { ReactNode } from "react";
 import { createContext, useContext } from "react";
+import { ShortcutsOverlay } from "./ShortcutsOverlay";
 
 export type LiveHostDoc = {
   sId: string;
@@ -173,7 +174,10 @@ export function LiveHostProvider({
   children: ReactNode;
 }) {
   return (
-    <LiveHostContext.Provider value={host}>{children}</LiveHostContext.Provider>
+    <LiveHostContext.Provider value={host}>
+      {children}
+      <ShortcutsOverlay />
+    </LiveHostContext.Provider>
   );
 }
 

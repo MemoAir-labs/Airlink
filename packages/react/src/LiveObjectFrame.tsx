@@ -7,6 +7,7 @@ import { useLiveHost } from "./host";
 import { LiveDocHistory } from "./LiveDocHistory";
 import type { LiveDocViewProps } from "./liveViewShared";
 import { LiveBadge, PresenceStack } from "./liveViewShared";
+import { openShortcutsEvent } from "./ShortcutsOverlay";
 import {
   Button,
   cn,
@@ -14,6 +15,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   Spinner,
 } from "./ui";
@@ -152,6 +154,13 @@ export function LiveObjectFrame({
                 onClick={() => setShowShare(true)}
               />
             )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              label="Keyboard shortcuts"
+              onClick={() =>
+                window.dispatchEvent(new Event(openShortcutsEvent))
+              }
+            />
           </DropdownMenuContent>
         </DropdownMenu>
       )}
